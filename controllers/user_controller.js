@@ -46,7 +46,7 @@ const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         //INSERTION
         await db.execute(
-            `INSERT INTO user (u_id, email, f_name, l_name, country, phone, created_at) VALUES (NULL, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())`,
+            `INSERT INTO user (u_id, email, f_name, l_name, country, phone, created_at, user_on) VALUES (NULL, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(), 0)`,
             [email, firstName, lastName, country, phone]
         );
         const [user] = await db.execute(`SELECT u_id AS id FROM user WHERE email = ?`, [email]);

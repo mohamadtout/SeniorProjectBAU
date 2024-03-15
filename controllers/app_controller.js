@@ -13,15 +13,24 @@ const getHeadlines = async (req, res) => {
 };
 const getCities = async (req, res) => {
     try {
-        const [headlines] = await db.execute(
-            "SELECT h_id AS headlineId, title, image_URL AS imageUrl, description, link FROM headline"
+        const [cities] = await db.execute(
+            "SELECT c_id AS cityId, city_name AS title, city_description AS description, image_URL AS imageUrl, longitude, latitude FROM city"
         );
-        return res.status(200).json({ headlines });
+        return res.status(200).json({ cities });
     } catch (error) {
         console.log(error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
+const getCityDetails = async (req, res) => {
+    try{
+        const { cityId } = req.body;
+        
+    }catch(error){
+        console.log(error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+}
 const getImage = async (req, res) => {
     try {
         const { directory, imageName } = req.params;
