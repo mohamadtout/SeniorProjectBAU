@@ -12,3 +12,10 @@ router.post("/users/login",
     UserMiddleware.verifyAgent,
     UserController.login
 )
+router.get("/user/details",
+    UserMiddleware.verifyAgent,
+    UserMiddleware.verifySession,
+    UserController.getUserDetails
+)
+
+module.exports = router;

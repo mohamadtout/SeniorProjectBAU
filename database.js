@@ -1,10 +1,10 @@
 const mysql = require("mysql2/promise");
 
 const pool = mysql.createPool({
-    host: "localhost",
-    user: "",
-    password: "",
-    database: "moovtoo",
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: 'moovtoo',
     port: 3306,
     // sslmode: "REQUIRED",
     waitForConnections: true,

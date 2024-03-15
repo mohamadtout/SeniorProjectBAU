@@ -7,8 +7,13 @@ const verifySession = async (req, res, next) => {
             return res.status(401).json({ error: "Access denied" });
         } else {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            req.userId = decoded.userId;
-            next();
+            const [user] = await db.execute("SELECT u_id FROM user WHERE u_id = ?", [decoded.userId])
+            if(user.length!=0){
+                req.body.userId = decoded.userId;
+                next();
+            }else{
+                return res.status(401).json({ error: "Invalid token" });
+            }
         }
     } catch (error) {
         console.log(error);
@@ -22,13 +27,15 @@ const verifyAgent = async (req, res, next) => {
             return res.status(401).json({ error: "Access denied" });
         }
         if (
-            client != "React App v1.0" ||
-            client != "Flutter Android v1.0" ||
-            client != "Flutter IOS v1.0"
+            client == "React App v1.0" ||
+            client == "Flutter Android v1.0" ||
+            client == "Flutter IOS v1.0" ||
+            client == "insomnia/8.6.1" //
         ) {
+            next();
+        } else {
             return res.status(401).json({ error: "Access denied" });
         }
-        next();
     } catch (error) {
         console.log(error);
         return res.status(401).json({ error: "Invalid token" });
@@ -40,12 +47,7 @@ const logRequest = async (req, res, next) => {
         const { userId } = req.body;
         await db.execute(
             `INSERT INTO user_log (l_id, request, endpoint, user_id, requested_at, agent) VALUES (NULL, ?, ?, ?, CURRET_TIMESTAMP(), ?)`,
-            [
-                JSON.stringify(req.body),
-                JSON.stringify(req.originalUrl),
-                userId,
-                client,
-            ]
+            [JSON.stringify(req.body), JSON.stringify(req.originalUrl), userId, client]
         );
         next();
     } catch (error) {
