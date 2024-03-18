@@ -81,18 +81,24 @@ const login = async (req, res) => {
             return res.status(400).json({ error: "Invalid email or password" });
         }
         //JWT
-        console.log(process.env.JWT_SECRET)
+        console.log(process.env.JWT_SECRET);
         if (rememberMe === true) {
             const token = jwt.sign({ userId: user[0].id }, process.env.JWT_SECRET, {
                 expiresIn: "30d",
             });
-            await db.execute("INSERT INTO user_session (us_id, user_id, jwt, expires_at) VALUES (NULL, ?, ?, DATE_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY))", [user[0].id, token])
+            await db.execute(
+                "INSERT INTO user_session (us_id, user_id, jwt, expires_at) VALUES (NULL, ?, ?, DATE_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY))",
+                [user[0].id, token]
+            );
             return res.status(200).json({ token });
         } else {
             const token = jwt.sign({ userId: user[0].id }, process.env.JWT_SECRET, {
                 expiresIn: "1h",
             });
-            await db.execute("INSERT INTO user_session (us_id, user_id, jwt, expires_at) VALUES (NULL, ?, ?, DATE_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR))", [user[0].id, token])
+            await db.execute(
+                "INSERT INTO user_session (us_id, user_id, jwt, expires_at) VALUES (NULL, ?, ?, DATE_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR))",
+                [user[0].id, token]
+            );
             return res.status(200).json({ token });
         }
     } catch (error) {
@@ -100,21 +106,203 @@ const login = async (req, res) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
-const getUserDetails = async(req, res) => {
+const getUserDetails = async (req, res) => {
     const { userId } = req.body;
     try {
         if (!userId) {
             return res.status(401).json({ error: "Denied Access" });
         }
-        const [data] = await db.execute(`SELECT email, f_name AS firstName, l_name AS lastName, country, phone FROM user WHERE u_id = ?`, [userId])
+        const [data] = await db.execute(
+            `SELECT email, f_name AS firstName, l_name AS lastName, country, phone FROM user WHERE u_id = ?`,
+            [userId]
+        );
         return res.status(200).json({ user: data[0] });
     } catch (error) {
         console.log(error);
         return res.status(500).json({ error: "Internal server error" });
     }
-}
+};
+const answerQuestion = async (req, res) => {
+    const { userId, questionId, answerId } = req.body;
+    try {
+        if (!userId || !questionId || !answerId) {
+            return res.status(400).json({ message: "Missing required fields" });
+        } else {
+            const answerValid = await db.execute(
+                `
+        SELECT COUNT(qa_id) AS count FROM question_answer
+        WHERE question_id = ? AND qa_id = ? AND answer_on = 0
+        `,
+                [questionId, answerId]
+            );
+            if (answerValid.count != 1) {
+                return res.status(400).json({ message: "Invalid Question or Answer Id" });
+            } else {
+                await db.execute(
+                    `
+                INSERT INTO user_question_answer (uqa_id, user_id, question_id, answer_id, user_answer_on, created_at) VALUES
+                (NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP())
+                `,
+                    [userId, questionId, answerId]
+                );
+                return res.status(200).json({ message: "Answer Recorded Successfully!" });
+            }
+        }
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+const reviewGuide = async (req, res) => {
+    try {
+        const { userId, guideId, reviewScore, reviewText } = req.body;
+        if (!userId || !guideId || !reviewScore) {
+            return res.status(400).json({ message: "Missing required fields" });
+        } else if (reviewScore > 100 || reviewScore < 0) {
+            //OBFUSCATION OF CAUSE OF BAD REQUEST
+            return res.status(400).json({ message: "Missing required fields" });
+        } else {
+            const [guideExists] = await db.execute(
+                "SELECT COUNT(*) AS count FROM guide WHERE g_id = ? AND guide_on = 0",
+                [guideId]
+            );
+            if (guideExists[0].count !== 1) {
+                //OBFUSCATION OF CAUSE OF BAD REQUEST
+                return res.status(400).json({ message: "Missing required fields" });
+            } else {
+                const review = await db.execute(
+                    `
+        INSERT INTO review (r_id, user_id, rating, description, created_at, edited_at, review_on)
+        VALUES (NULL, ?, ?, ?, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), 0)
+        `,
+                    [userId, reviewScore, reviewText]
+                );
+                await db.execute(
+                    `
+        INSERT INTO guide_review (gr_id, guide_id, review_id)
+        VALUES (NULL, ?, ?)
+        `,
+                    [guideId, review[0].insertId]
+                );
+                return res.status(200).json({ message: "Review Added Successfully" });
+            }
+        }
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+const reviewActivity = async (req, res) => {
+    try {
+        const { userId, activityId, reviewScore, reviewText } = req.body;
+        if (!userId || !activityId || !reviewScore) {
+            return res.status(400).json({ message: "Missing required fields" });
+        } else if (reviewScore > 100 || reviewScore < 0) {
+            //OBFUSCATION OF CAUSE OF BAD REQUEST
+            return res.status(400).json({ message: "Missing required fields" });
+        } else {
+            const [acitivityExists] = await db.execute(
+                "SELECT COUNT(*) AS count FROM activity WHERE a_id = ?",
+                [activityId]
+            );
+            if (acitivityExists[0].count !== 1) {
+                //OBFUSCATION OF CAUSE OF BAD REQUEST
+                return res.status(400).json({ message: "Missing required fields" });
+            } else {
+                const review = await db.execute(
+                    `
+            INSERT INTO review (r_id, user_id, rating, description, created_at, edited_at, review_on)
+            VALUES (NULL, ?, ?, ?, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), 0)
+            `,
+                    [userId, reviewScore, reviewText]
+                );
+                await db.execute(
+                    `
+            INSERT INTO activity_review (ar_id, activity_id, review_id)
+            VALUES (NULL, ?, ?)
+            `,
+                    [guideId, review[0].insertId]
+                );
+                return res.status(200).json({ message: "Review Added Successfully" });
+            }
+        }
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+const deleteReview = async (req, res) => {
+    try {
+        const { userId, reviewId } = req.body;
+        if (!userId || !reviewId) {
+            return res.status(400).json({ message: "Missing required fields" });
+        } else {
+            const [reviewValid] = await db.execute(
+                `
+            SELECT COUNT(*) AS count FROM review WHERE r_id = ? AND user_id = ? AND review_on = 0
+            `,
+                [reviewId, userId]
+            );
+            if (reviewValid[0].count !== 1) {
+                //OBFUSCATION OF CAUSE OF BAD REQUEST
+                return res.status(400).json({ message: "Missing required fields" });
+            } else {
+                await db.execute(
+                    `
+            UPDATE review
+            SET review_on = 1
+            WHERE r_id = ? AND user_id = ? AND review_on = 0
+            `,
+                    [reviewId, userId]
+                );
+                return res.status(200).json({ message: "Deleted Review Successfully" });
+            }
+        }
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+const editReview = async (req, res) => {
+    try {
+        const { userId, reviewId, newScore, newText } = req.body;
+        if (!userId || !reviewId || !newScore || newScore < 0 || newScore > 100) {
+            return res.status(400).json({ message: "Missing required fields" });
+        } else {
+            const [reviewValid] = await db.execute(
+                `
+            SELECT COUNT(*) AS count FROM review WHERE r_id = ? AND user_id = ? AND review_on = 0
+            `,
+                [reviewId, userId]
+            );
+            if (reviewValid[0].count !== 1) {
+                //OBFUSCATION OF CAUSE OF BAD REQUEST
+                return res.status(400).json({ message: "Missing required fields" });
+            } else {
+                await db.execute(
+                    `
+            UPDATE review
+            SET rating = ? AND description = ?
+            WHERE r_id = ? AND user_id = ? AND review_on = 0
+            `,
+                    [newScore, newText, reviewId, userId]
+                );
+                return res.status(200).json({ message: "Deleted Review Successfully" });
+            }
+        }
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
 module.exports = {
     register,
     login,
     getUserDetails,
+    //TO TEST
+    answerQuestion,
+    reviewGuide,
+    reviewActivity,
+    deleteReview,
+    editReview,
 };
