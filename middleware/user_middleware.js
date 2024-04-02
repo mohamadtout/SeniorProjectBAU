@@ -30,7 +30,7 @@ const verifyAgent = async (req, res, next) => {
             client == "React App v1.0" ||
             client == "Flutter Android v1.0" ||
             client == "Flutter IOS v1.0" ||
-            client == "insomnia/8.6.1" //
+            client == "insomnia" //
         ) {
             next();
         } else {

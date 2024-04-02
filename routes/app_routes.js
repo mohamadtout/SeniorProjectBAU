@@ -7,7 +7,7 @@ router.get("/headlines",
     UserMiddleware.verifyAgent,
     AppController.getHeadlines
 )
-router.get("/:directory/:imageName", 
+router.get("/images/:directory/:imageName", 
     UserMiddleware.verifyAgent,
     AppController.getImage
 )

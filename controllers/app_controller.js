@@ -5,6 +5,10 @@ const getHeadlines = async (req, res) => {
         const [headlines] = await db.execute(
             "SELECT h_id AS headlineId, title, image_URL AS imageUrl, description, link FROM headline"
         );
+        headlines.forEach(headline => {
+            const PORT = process.env.SERVER_PORT || 3000;
+            headline.imageUrl = process.env.API_URL+":"+PORT+"/app/images/headlines/"+headline.imageUrl
+        })
         return res.status(200).json({ headlines });
     } catch (error) {
         console.log(error);
@@ -125,16 +129,22 @@ const getGuideDetails = async (req, res) => {
         const [firstName, lastName] = guideName.split("&").map((name) => name.trim());
         const [guideExists] = await db.execute(
             `
-            SELECT * FROM guide
+            SELECT g_id AS guideId, bio, picture_URL AS image, cover_picture_URL AS coverImage, city_name AS cityName,  FROM guide
             INNER JOIN user ON user.u_id = guide.user_id
+            INNER JOIN city ON guide.city_id = city.c_id
             WHERE guide_on = 0 AND user_on = 0 AND f_name = ? AND l_name = ?
-            `
+            `, [firstName, lastName]
         );
         //TODO: edge case, multiple guides with same name
         if (guideExists.length !== 1) {
             return res.status(200).json({ message: "Guide Not Found" });
         } else {
             //TODO: IMPLEMENT FUNCTION
+            const languages = await db.execute(
+                `
+                SELECT language_name FROM 
+                `
+            )
         }
     } catch (error) {
         console.log(error);
