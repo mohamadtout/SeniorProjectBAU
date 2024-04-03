@@ -128,6 +128,7 @@ const answerQuestion = async (req, res) => {
         if (!userId || !questionId || !answerId) {
             return res.status(400).json({ message: "Missing required fields" });
         } else {
+            //Look if the provided question and answer ids are valid and compatible
             const answerValid = await db.execute(
                 `
         SELECT COUNT(qa_id) AS count FROM question_answer
@@ -138,6 +139,15 @@ const answerQuestion = async (req, res) => {
             if (answerValid.count != 1) {
                 return res.status(400).json({ message: "Invalid Question or Answer Id" });
             } else {
+                //delete any previous answer to the same question submitted by the user
+                await db.execute(
+                    `
+                UPDATE user_question_answer SET user_answer_on = 1
+                WHERE user_id = ? AND question_id = ?
+                `,
+                    [userId, questionId, answerId]
+                );
+                //record new answer
                 await db.execute(
                     `
                 INSERT INTO user_question_answer (uqa_id, user_id, question_id, answer_id, user_answer_on, created_at) VALUES
