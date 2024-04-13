@@ -208,9 +208,7 @@ const getGuideReviews = async (guideId) => {
     if (reviews.length === 0) {
         return [];
     } else {
-        console.log("AAAH");
         for (let review of reviews) {
-            console.log(review);
             const [reviewer] = await db.execute(
                 `
                 SELECT CONCAT(user.f_name, '&', user.l_name) AS name FROM user
