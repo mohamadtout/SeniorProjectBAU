@@ -197,30 +197,24 @@ const getGuideDetails = async (req, res) => {
 //helper function for getting the guide details
 const getGuideReviews = async (guideId) => {
     //WHAT WE NEED: reviewScore, reviewText, reviewerName
-    let [reviews] = await db.execute(
+    const [reviews] = await db.execute(
         `
-        SELECT rating AS reviewScore, user_id AS reviewerId, description AS reviewText FROM review
-        INNER JOIN guide_review ON r_id = review_id
-        WHERE guide_id = ? AND review_on = 0
+        SELECT 
+            review.rating AS reviewScore, 
+            review.description AS reviewText, 
+            CONCAT(user.f_name, '&', user.l_name) AS reviewerName
+        FROM 
+            review
+        INNER JOIN 
+            guide_review ON review.r_id = guide_review.review_id
+        INNER JOIN 
+            user ON review.user_id = user.u_id
+        WHERE 
+            guide_review.guide_id = ? AND review.review_on = 0
         `,
         [guideId]
     );
-    if (reviews.length === 0) {
-        return [];
-    } else {
-        for (let review of reviews) {
-            const [reviewer] = await db.execute(
-                `
-                SELECT CONCAT(user.f_name, '&', user.l_name) AS name FROM user
-                WHERE u_id = ?
-                `,
-                [review.reviewerId]
-            );
-            review.reviewer = reviewer[0].name;
-            delete review.reviewerId;
-        }
-        return reviews;
-    }
+    return reviews;
 };
 
 module.exports = {
@@ -228,7 +222,7 @@ module.exports = {
     getImage,
     getCities,
     getCityDetails,
-    //TO TEST
     getGuideDetails,
+    //TO TEST
     getQuestion,
 };
