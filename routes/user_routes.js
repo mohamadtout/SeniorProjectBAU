@@ -17,5 +17,10 @@ router.get("/user/details",
     UserMiddleware.verifySession,
     UserController.getUserDetails
 )
+router.post("/user/guide/review",
+    UserMiddleware.verifyAgent,
+    UserMiddleware.verifySession,
+    UserController.reviewGuide
+)
 
 module.exports = router;

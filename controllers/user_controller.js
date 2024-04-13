@@ -166,9 +166,10 @@ const answerQuestion = async (req, res) => {
 const reviewGuide = async (req, res) => {
     try {
         const { userId, guideId, reviewScore, reviewText } = req.body;
-        if (!userId || !guideId || !reviewScore) {
+        const score = parseInt(reviewScore);
+        if (!userId || !guideId || !reviewScore || !score) {
             return res.status(400).json({ message: "Missing required fields" });
-        } else if (reviewScore > 100 || reviewScore < 0) {
+        } else if (score > 100 || score < 0) {
             //OBFUSCATION OF CAUSE OF BAD REQUEST
             return res.status(400).json({ message: "Missing required fields" });
         } else {
@@ -205,9 +206,10 @@ const reviewGuide = async (req, res) => {
 const reviewActivity = async (req, res) => {
     try {
         const { userId, activityId, reviewScore, reviewText } = req.body;
-        if (!userId || !activityId || !reviewScore) {
+        const score = parseInt(reviewScore);
+        if (!userId || !activityId || !reviewScore || !score) {
             return res.status(400).json({ message: "Missing required fields" });
-        } else if (reviewScore > 100 || reviewScore < 0) {
+        } else if (score > 100 || score < 0) {
             //OBFUSCATION OF CAUSE OF BAD REQUEST
             return res.status(400).json({ message: "Missing required fields" });
         } else {
@@ -224,7 +226,7 @@ const reviewActivity = async (req, res) => {
             INSERT INTO review (r_id, user_id, rating, description, created_at, edited_at, review_on)
             VALUES (NULL, ?, ?, ?, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), 0)
             `,
-                    [userId, reviewScore, reviewText]
+                    [userId, score, reviewText]
                 );
                 await db.execute(
                     `

@@ -2,8 +2,9 @@ const db = require("../database");
 const jwt = require("jsonwebtoken");
 const verifySession = async (req, res, next) => {
     try {
+        const { userId } = req.body;
         const token = req.header("Authorization");
-        if (!token) {
+        if (!token|| userId) {
             return res.status(401).json({ error: "Access denied" });
         } else {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
