@@ -278,7 +278,8 @@ const deleteReview = async (req, res) => {
 const editReview = async (req, res) => {
     try {
         const { userId, reviewId, newScore, newText } = req.body;
-        if (!userId || !reviewId || !newScore || newScore < 0 || newScore > 100) {
+        const score = parseInt(newScore);
+        if (!userId || !reviewId || !newScore || !score || score < 0 || score > 100) {
             return res.status(400).json({ message: "Missing required fields" });
         } else {
             const [reviewValid] = await db.execute(
@@ -297,9 +298,9 @@ const editReview = async (req, res) => {
             SET rating = ? AND description = ?
             WHERE r_id = ? AND user_id = ? AND review_on = 0
             `,
-                    [newScore, newText, reviewId, userId]
+                    [score, newText, reviewId, userId]
                 );
-                return res.status(200).json({ message: "Deleted Review Successfully" });
+                return res.status(200).json({ message: "Edited Review Successfully" });
             }
         }
     } catch (error) {
@@ -311,10 +312,10 @@ module.exports = {
     register,
     login,
     getUserDetails,
-    //TO TEST
-    answerQuestion,
     reviewGuide,
-    reviewActivity,
     deleteReview,
     editReview,
+    //TO TEST
+    answerQuestion,
+    reviewActivity,
 };
