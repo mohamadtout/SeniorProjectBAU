@@ -17,5 +17,15 @@ router.get(
     UserMiddleware.verifyAgent,
     AppController.getGuideDetails
 );
+router.get(
+    "/trails",
+    UserMiddleware.verifyAgent,
+    AppController.getTrails
+);
+router.get(
+    "/events",
+    UserMiddleware.verifyAgent,
+    AppController.getEvents
+);
 
 module.exports = router;

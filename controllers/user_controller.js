@@ -233,7 +233,7 @@ const reviewActivity = async (req, res) => {
             INSERT INTO activity_review (ar_id, activity_id, review_id)
             VALUES (NULL, ?, ?)
             `,
-                    [guideId, review[0].insertId]
+                    [activityId, review[0].insertId]
                 );
                 return res.status(200).json({ message: "Review Added Successfully" });
             }

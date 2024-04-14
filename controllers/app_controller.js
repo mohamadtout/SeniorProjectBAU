@@ -1,14 +1,14 @@
 const db = require("../database");
 const path = require("path");
 const PORT = process.env.SERVER_PORT || 3000;
-const imagesURL = process.env.API_URL + ":" + PORT;
+const imagesURL = process.env.API_URL + ":" + PORT + "/app/images/";
 const getHeadlines = async (req, res) => {
     try {
         const [headlines] = await db.execute(
             "SELECT h_id AS headlineId, title, image_URL AS imageUrl, description, link FROM headline"
         );
         headlines.forEach((headline) => {
-            headline.imageUrl = imagesURL + "/app/images/headlines/" + headline.imageUrl;
+            headline.imageUrl = imagesURL + "headlines/" + headline.imageUrl;
         });
         return res.status(200).json({ headlines });
     } catch (error) {
@@ -22,7 +22,7 @@ const getCities = async (req, res) => {
             "SELECT c_id AS cityId, city_name AS title, city_description AS description, image_URL AS imageUrl FROM city"
         );
         cities.forEach((city) => {
-            city.imageUrl = imagesURL + "/app/images/cities/" + city.imageUrl;
+            city.imageUrl = imagesURL + "cities/" + city.imageUrl;
         });
         return res.status(200).json({ cities });
     } catch (error) {
@@ -43,7 +43,7 @@ const getGuidesDetails = async (cityId) => {
         return [];
     } else {
         for (const guide of guides) {
-            guide.photo = imagesURL + "/app/images/guides/" + guide.photo;
+            guide.photo = imagesURL + "guides/" + guide.photo;
             const [categories] = await db.execute(
                 `
                 SELECT category.category_name
@@ -69,14 +69,14 @@ const getCityDetails = async (req, res) => {
         if (city.length === 0) {
             return res.status(200).json({ message: "No City Found" });
         } else {
-            city[0].coverImage = imagesURL + "/app/images/cities/" + city[0].coverImage;
+            city[0].coverImage = imagesURL + "cities/" + city[0].coverImage;
             const [gallery] = await db.execute(
                 "SELECT cg_id AS imageId, title, image_URL AS imageUrl FROM city_gallery WHERE city_id = ? AND image_on = 0",
                 [city[0].cityId]
             );
             if (gallery.length != 0) {
                 gallery.forEach((image) => {
-                    image.imageUrl = imagesURL + "/app/images/cityGallery/" + image.imageUrl;
+                    image.imageUrl = imagesURL + "cityGallery/" + image.imageUrl;
                 });
             }
             const guides = await getGuidesDetails(city[0].cityId);
@@ -161,8 +161,8 @@ const getGuideDetails = async (req, res) => {
             guide = guideExists[0];
         }
         //ADDING THE CDN URL TO THE IMAGES
-        guide.image = imagesURL + "/app/images/guides/" + guide.image;
-        guide.coverImage = imagesURL + "/app/images/guides/" + guide.coverImage;
+        guide.image = imagesURL + "guides/" + guide.image;
+        guide.coverImage = imagesURL + "guides/" + guide.coverImage;
         //GET THE LANGUAGES OF THE GUIDE
         const [languages] = await db.execute(
             `
@@ -185,7 +185,6 @@ const getGuideDetails = async (req, res) => {
             [guide.guideId]
         );
         guide.categories = categories.map((category) => category.category_name);
-        //TODO: GET THE REVIEWS OF THE GUIDE
         const reviews = await getGuideReviews(guide.guideId);
         guide.reviews = reviews;
         return res.status(200).json({ guide });
@@ -199,7 +198,8 @@ const getGuideReviews = async (guideId) => {
     //WHAT WE NEED: reviewScore, reviewText, reviewerName
     const [reviews] = await db.execute(
         `
-        SELECT 
+        SELECT
+            review.user_id AS reviewerId
             review.rating AS reviewScore, 
             review.description AS reviewText, 
             CONCAT(user.f_name, '&', user.l_name) AS reviewerName
@@ -216,6 +216,71 @@ const getGuideReviews = async (guideId) => {
     );
     return reviews;
 };
+const getEvents = async (req, res) => {
+    const [events] = await db.execute(
+        `
+        SELECT
+            a_id AS eventId,
+            activity_title AS title,
+            preview_image_URL AS image,
+            activity_event.time AS time
+        FROM activity
+        INNER JOIN
+            activity_event ON activity.a_id = activity_event.activity_id
+        WHERE
+            type = 0
+        AND
+            activity_on = 0
+        AND
+            activity_event.time > NOW()
+        `
+    );
+    events.forEach((event) => {
+        event.image = imagesURL + "activities/" + event.image;
+    });
+    return res.status(200).json(events);
+};
+const getEventDetails = async (req, res) => {
+
+};
+const getTrails = async (req, res) => {
+    const [trails] = await db.execute(
+        `
+        SELECT
+            activity.a_id AS trailId,
+            activity.activity_title AS title,
+            activity.preview_image_URL AS image,
+            activity_trail.starts_at AS startDate,
+            activity_trail.ends_at AS endDate,
+            guide.picture_URL AS guideImage,
+            user.f_name AS guideFirstName,
+            user.l_name AS guideLastName
+        FROM activity
+        INNER JOIN
+            activity_trail ON activity.a_id = activity_trail.activity_id
+        INNER JOIN
+            guide ON activity_trail.guide_id = guide.g_id
+        INNER JOIN
+            user ON guide.user_id = user.u_id
+        WHERE
+            type = 1
+        AND
+            activity_on = 0
+        AND
+            guide_on = 0
+        AND
+            activity_trail.ends_at > NOW()
+        `
+    );
+    trails.forEach((trail) => {
+        trail.guideImage = imagesURL + "guides/" + trail.guideImage;
+        trail.image = imagesURL + "activities/" + trail.image;
+    });
+    return res.status(200).json(trails);
+};
+const getTrailDetails = async (req, res) => {
+
+}
 
 module.exports = {
     getHeadlines,
@@ -223,6 +288,8 @@ module.exports = {
     getCities,
     getCityDetails,
     getGuideDetails,
+    getEvents,
+    getTrails,
     //TO TEST
     getQuestion,
 };

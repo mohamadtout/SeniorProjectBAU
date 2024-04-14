@@ -19,6 +19,12 @@ router.post(
     UserController.reviewGuide
 );
 router.post(
+    "/user/activity/review",
+    UserMiddleware.verifyAgent,
+    UserMiddleware.verifySession,
+    UserController.reviewActivity
+);
+router.post(
     "/user/review/delete",
     UserMiddleware.verifyAgent,
     UserMiddleware.verifySession,
