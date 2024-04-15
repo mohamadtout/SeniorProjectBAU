@@ -1,3 +1,13 @@
+/*
+METHODS IN THIS MIDDLEWARE:
+1.verifySession: used in the methods in the user_controller that require login, takes the token in the Authorization
+    header and decodes it to get the userId of the currently logged in user and puts it in the body
+2.verifyAgent: used in version control/support (sepcifically on mobile development) so that older versions
+    can be brought out of support from the server side
+3.logRequest: logs the current request performed by a logged in user in the database
+    this is to identify potential "bad-faith" behavior through a future admin dashboard
+*/
+
 const db = require("../database");
 const jwt = require("jsonwebtoken");
 const verifySession = async (req, res, next) => {

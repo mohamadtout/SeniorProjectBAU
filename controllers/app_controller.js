@@ -1,3 +1,18 @@
+/*
+METHODS IN THIS CONTROLLER:
+1.getHeadlines: doesn't take anything from the request, returns the headlines for the home page
+2.getCities: doesn't take anything from the request, returns a sneak peak of each city present in the database
+3.getCityDetails: takes the city name as a parameter, returns detailed information about a specific city
+4.getGuidesForCity: helper function for the getCityDetails function, gets all the guides in a specific city
+5.getGuideDetails: takes the guide's name as a parameter, returns detailed information about a specific guide
+6.getEvents: doesn't take anything from the request, returns a sneak peak of all the future events present in the database
+7.getEventDetails: takes the event name as a parameter, returns detailed information about a sepcific event
+8.getTrails: doesn't take anything from the request, returns a sneak peak of all the future trails present in the database
+9.getTrailDetails: takes the trail name as a parameter, returns detailed information about a sepcific trail
+10.getGuideReviews: helper function used in the getGuideDetails function to get all the reviews of the guide
+11.getActivityReview: helper function used in both getEventDetails and getTrailDetails to get all the reviews of the event or trail
+12.getImage: temporary development based function to serve images, this can be easily switched to a CDN in a production environment
+*/
 const db = require("../database");
 const path = require("path");
 const PORT = process.env.SERVER_PORT || 3000;
@@ -5,7 +20,15 @@ const imagesURL = process.env.API_URL + ":" + PORT + "/app/images/";
 const getHeadlines = async (req, res) => {
     try {
         const [headlines] = await db.execute(
-            "SELECT h_id AS headlineId, title, image_URL AS imageUrl, description, link FROM headline"
+            `
+            SELECT
+                h_id AS headlineId,
+                title,
+                image_URL AS imageUrl,
+                description,
+                link
+            FROM 
+                headline`
         );
         headlines.forEach((headline) => {
             headline.imageUrl = imagesURL + "headlines/" + headline.imageUrl;
@@ -19,7 +42,14 @@ const getHeadlines = async (req, res) => {
 const getCities = async (req, res) => {
     try {
         const [cities] = await db.execute(
-            "SELECT c_id AS cityId, city_name AS title, city_description AS description, image_URL AS imageUrl FROM city"
+            `SELECT
+                c_id AS cityId,
+                city_name AS title,
+                city_description AS description,
+                image_URL AS imageUrl
+            FROM 
+                city
+            `
         );
         cities.forEach((city) => {
             city.imageUrl = imagesURL + "cities/" + city.imageUrl;
@@ -30,13 +60,74 @@ const getCities = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
-const getGuidesDetails = async (cityId) => {
+const getCityDetails = async (req, res) => {
+    try {
+        const { cityName } = req.params;
+        const [city] = await db.execute(
+            `
+            SELECT
+                c_id AS cityId,
+                city_name AS title,
+                city_description AS description,
+                image_URL AS coverImage,
+                longitude,
+                latitude 
+            FROM 
+                city 
+            WHERE
+                city_name = ?
+            `,
+            [cityName]
+        );
+
+        if (city.length === 0) {
+            return res.status(200).json({ message: "No City Found" });
+        } else {
+            city[0].coverImage = imagesURL + "cities/" + city[0].coverImage;
+            const [gallery] = await db.execute(
+                `
+                SELECT 
+                    cg_id AS imageId,
+                    title,
+                    image_URL AS imageUrl
+                FROM
+                    city_gallery
+                WHERE
+                    city_id = ?
+                    AND
+                    image_on = 0
+                `,
+                [city[0].cityId]
+            );
+            if (gallery.length != 0) {
+                gallery.forEach((image) => {
+                    image.imageUrl = imagesURL + "cityGallery/" + image.imageUrl;
+                });
+            }
+            const guides = await getGuidesForCity(city[0].cityId);
+            return res.status(200).json({ city: city[0], gallery, guides });
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+const getGuidesForCity = async (cityId) => {
     const [guides] = await db.execute(
         `
-    SELECT g_id AS guideId, CONCAT(user.f_name, '&', user.l_name) AS name, picture_URL as photo FROM guide
-    INNER JOIN user ON user.u_id =  guide.user_id
-    WHERE city_id = ? AND guide_on = 0
-    `,
+        SELECT
+            g_id AS guideId,
+            CONCAT(user.f_name, '&', user.l_name) AS name,
+            picture_URL as photo 
+        FROM 
+            guide
+        INNER JOIN
+            user ON user.u_id =  guide.user_id
+        WHERE 
+            guide_on = 0
+            AND
+            city_id = ?
+        `,
         [cityId]
     );
     if (guides.length === 0) {
@@ -46,10 +137,18 @@ const getGuidesDetails = async (cityId) => {
             guide.photo = imagesURL + "guides/" + guide.photo;
             const [categories] = await db.execute(
                 `
-                SELECT category.category_name
-                FROM guide_category
-                RIGHT JOIN category ON guide_category.category_id = category.cat_id
-                WHERE guide_category.guide_id = ? AND guide_category.active = 0 AND category.category_active = 0
+                SELECT
+                    category.category_name
+                FROM
+                    guide_category
+                RIGHT JOIN
+                    category ON guide_category.category_id = category.cat_id
+                WHERE
+                    guide_category.active = 0
+                    AND
+                    category.category_active = 0
+                    AND
+                    guide_category.guide_id = ?
                 `,
                 [guide.guideId]
             );
@@ -58,90 +157,28 @@ const getGuidesDetails = async (cityId) => {
         return guides;
     }
 };
-const getCityDetails = async (req, res) => {
-    try {
-        const { cityName } = req.params;
-        const [city] = await db.execute(
-            "SELECT c_id AS cityId, city_name AS title, city_description AS description, image_URL AS coverImage, longitude, latitude FROM city WHERE city_name = ?",
-            [cityName]
-        );
-
-        if (city.length === 0) {
-            return res.status(200).json({ message: "No City Found" });
-        } else {
-            city[0].coverImage = imagesURL + "cities/" + city[0].coverImage;
-            const [gallery] = await db.execute(
-                "SELECT cg_id AS imageId, title, image_URL AS imageUrl FROM city_gallery WHERE city_id = ? AND image_on = 0",
-                [city[0].cityId]
-            );
-            if (gallery.length != 0) {
-                gallery.forEach((image) => {
-                    image.imageUrl = imagesURL + "cityGallery/" + image.imageUrl;
-                });
-            }
-            const guides = await getGuidesDetails(city[0].cityId);
-            return res.status(200).json({ city: city[0], gallery, guides });
-        }
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-};
-const getImage = async (req, res) => {
-    try {
-        const { directory, imageName } = req.params;
-        const dirPath = path.join(__dirname, `../images/${directory}`);
-        res.sendFile(imageName, { root: dirPath }, (err) => {
-            if (err) {
-                // Handle errors such as file not found
-                res.status(404).send("Image not found.");
-            }
-        });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-};
-const getQuestion = async (req, res) => {
-    try {
-        const { step } = req.body;
-        const [questions] = await db.execute(
-            `
-        SELECT q_id AS questionId, question_title AS question, multiple_answers, answer_has_image
-        FROM questionnaire
-        WHERE step = ? AND question_on = 0
-        `,
-            [step]
-        );
-        if (questions.length === 0) {
-            return res.status(400).json({ message: "No Questions Found For This Step" });
-        } else {
-            questions.forEach(async (question) => {
-                const [answers] = await db.execute(
-                    `
-                SELECT qa_id AS asnwerId, answer_text AS answer, answer_image_URL AS answerImage FROM question_answer
-                WHERE question_id = ? AND answer_on = 0
-                `,
-                    [question.questionId]
-                );
-                question.push(answers);
-            });
-            return res.status(200).json({ questions });
-        }
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-};
 const getGuideDetails = async (req, res) => {
     try {
         const { firstName, lastName } = req.params;
         const [guideExists] = await db.execute(
             `
-            SELECT g_id AS guideId, bio, picture_URL AS image, cover_picture_URL AS coverImage, city_name AS cityName FROM guide
-            INNER JOIN user ON user.u_id = guide.user_id
-            INNER JOIN city ON guide.city_id = city.c_id
-            WHERE guide_on = 0 AND user_on = 0 AND f_name = ? AND l_name = ?
+            SELECT 
+                g_id AS guideId,
+                bio,
+                picture_URL AS image,
+                cover_picture_URL AS coverImage,
+                city_name AS cityName 
+            FROM 
+                guide
+            INNER JOIN 
+                user ON user.u_id = guide.user_id
+            INNER JOIN
+                city ON guide.city_id = city.c_id
+            WHERE 
+                guide_on = 0
+                AND user_on = 0
+                AND f_name = ?
+                AND l_name = ?
             `,
             [firstName, lastName]
         );
@@ -166,9 +203,16 @@ const getGuideDetails = async (req, res) => {
         //GET THE LANGUAGES OF THE GUIDE
         const [languages] = await db.execute(
             `
-            SELECT language_name AS language FROM guide_language
-            INNER JOIN language ON l_id = language_id
-            WHERE guide_id = ? AND active = 0
+            SELECT 
+                language_name AS language
+            FROM 
+                guide_language
+            INNER JOIN
+                language ON l_id = language_id
+            WHERE
+                guide_id = ?
+                AND 
+                active = 0
             `,
             [guide.guideId]
         );
@@ -177,10 +221,18 @@ const getGuideDetails = async (req, res) => {
         //GET THE CATEGORIES OF THE GUIDE
         const [categories] = await db.execute(
             `
-            SELECT category.category_name
-            FROM guide_category
-            RIGHT JOIN category ON guide_category.category_id = category.cat_id
-            WHERE guide_category.guide_id = ? AND guide_category.active = 0 AND category.category_active = 0
+            SELECT 
+                category.category_name
+            FROM
+                guide_category
+            RIGHT JOIN 
+                category ON guide_category.category_id = category.cat_id
+            WHERE 
+                guide_category.guide_id = ?
+                AND 
+                guide_category.active = 0
+                AND 
+                category.category_active = 0
             `,
             [guide.guideId]
         );
@@ -192,29 +244,6 @@ const getGuideDetails = async (req, res) => {
         console.log(error);
         res.status(500).json({ error: "Internal Server Error" });
     }
-};
-//helper function for getting the guide details
-const getGuideReviews = async (guideId) => {
-    //WHAT WE NEED: reviewScore, reviewText, reviewerName
-    const [reviews] = await db.execute(
-        `
-        SELECT
-            review.user_id AS reviewerId
-            review.rating AS reviewScore, 
-            review.description AS reviewText, 
-            CONCAT(user.f_name, '&', user.l_name) AS reviewerName
-        FROM 
-            review
-        INNER JOIN 
-            guide_review ON review.r_id = guide_review.review_id
-        INNER JOIN 
-            user ON review.user_id = user.u_id
-        WHERE 
-            guide_review.guide_id = ? AND review.review_on = 0
-        `,
-        [guideId]
-    );
-    return reviews;
 };
 const getEvents = async (req, res) => {
     const [events] = await db.execute(
@@ -229,9 +258,9 @@ const getEvents = async (req, res) => {
             activity_event ON activity.a_id = activity_event.activity_id
         WHERE
             type = 0
-        AND
+            AND
             activity_on = 0
-        AND
+            AND
             activity_event.time > NOW()
         `
     );
@@ -240,9 +269,8 @@ const getEvents = async (req, res) => {
     });
     return res.status(200).json(events);
 };
-const getEventDetails = async (req, res) => {
-
-};
+//TODO
+const getEventDetails = async (req, res) => {};
 const getTrails = async (req, res) => {
     const [trails] = await db.execute(
         `
@@ -264,11 +292,11 @@ const getTrails = async (req, res) => {
             user ON guide.user_id = user.u_id
         WHERE
             type = 1
-        AND
+            AND
             activity_on = 0
-        AND
+            AND
             guide_on = 0
-        AND
+            AND
             activity_trail.ends_at > NOW()
         `
     );
@@ -278,10 +306,47 @@ const getTrails = async (req, res) => {
     });
     return res.status(200).json(trails);
 };
-const getTrailDetails = async (req, res) => {
-
-}
-
+//TODO
+const getTrailDetails = async (req, res) => {};
+const getGuideReviews = async (guideId) => {
+    //WHAT WE NEED: reviewScore, reviewText, reviewerName, reviewerId
+    const [reviews] = await db.execute(
+        `
+        SELECT
+            review.user_id AS reviewerId
+            review.rating AS reviewScore, 
+            review.description AS reviewText, 
+            CONCAT(user.f_name, '&', user.l_name) AS reviewerName
+        FROM 
+            review
+        INNER JOIN 
+            guide_review ON review.r_id = guide_review.review_id
+        INNER JOIN 
+            user ON review.user_id = user.u_id
+        WHERE 
+            guide_review.guide_id = ?
+            AND 
+            review.review_on = 0
+        `,
+        [guideId]
+    );
+    return reviews;
+};
+const getImage = async (req, res) => {
+    try {
+        const { directory, imageName } = req.params;
+        const dirPath = path.join(__dirname, `../images/${directory}`);
+        res.sendFile(imageName, { root: dirPath }, (err) => {
+            if (err) {
+                // Handle errors such as file not found
+                res.status(404).send("Image not found.");
+            }
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
 module.exports = {
     getHeadlines,
     getImage,
@@ -291,5 +356,6 @@ module.exports = {
     getEvents,
     getTrails,
     //TO TEST
-    getQuestion,
+    getEventDetails,
+    getTrailDetails,
 };
