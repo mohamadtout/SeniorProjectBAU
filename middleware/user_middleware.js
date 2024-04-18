@@ -14,15 +14,17 @@ const verifySession = async (req, res, next) => {
     try {
         const { userId } = req.body;
         const token = req.header("Authorization");
-        if (!token|| userId) {
+        if (!token || userId) {
             return res.status(401).json({ error: "Access denied" });
         } else {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            const [user] = await db.execute("SELECT u_id FROM user WHERE u_id = ?", [decoded.userId])
-            if(user.length!=0){
+            const [user] = await db.execute("SELECT u_id FROM user WHERE u_id = ?", [
+                decoded.userId,
+            ]);
+            if (user.length != 0) {
                 req.body.userId = decoded.userId;
                 next();
-            }else{
+            } else {
                 return res.status(401).json({ error: "Invalid token" });
             }
         }
@@ -38,14 +40,12 @@ const verifyAgent = async (req, res, next) => {
             return res.status(401).json({ error: "Access denied" });
         }
         if (
-            client == "React App v1.0" ||
-            client == "Flutter Android v1.0" ||
-            client == "Flutter IOS v1.0" ||
-            client == "insomnia" //
+            client.startsWith("Flutter") &&
+            (client != "Flutter Android v1.0" || client != "Flutter IOS v1.0")
         ) {
-            next();
-        } else {
             return res.status(401).json({ error: "Access denied" });
+        } else {
+            next();
         }
     } catch (error) {
         console.log(error);
