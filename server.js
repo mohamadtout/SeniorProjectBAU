@@ -1,3 +1,4 @@
+const cors = require("cors");
 const express = require("express");
 const app = express();
 // const db = require("./database");
@@ -6,6 +7,11 @@ app.use(express.json());
 const user_routes = require("./routes/user_routes");
 const app_routes = require("./routes/app_routes");
 const PORT = process.env.SERVER_PORT || 3000;
+const corsOptions = {
+    origin: "*",
+    credentials: true,
+};
+app.use(cors(corsOptions));
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
