@@ -270,7 +270,56 @@ const getEvents = async (req, res) => {
     return res.status(200).json(events);
 };
 //TODO
-const getEventDetails = async (req, res) => {};
+const getEventDetails = async (req, res) => {
+    const { eventName } = req.params;
+    const [event] = await db.execute(
+        `
+        SELECT
+            a_id AS eventId,
+            activity_title AS title,
+            preview_image_URL AS image,
+            description,
+            activity_event.time AS time
+        FROM activity
+        INNER JOIN
+            activity_event ON activity.a_id = activity_event.activity_id
+        WHERE
+            type = 0
+            AND
+            activity_on = 0
+            AND
+            activity_title = ?
+            AND
+            activity_event.time > NOW()
+        `,
+        [eventName]
+    );
+    if (event.length === 0) {
+        return res.status(200).json({ message: "Event Not Found" });
+    }
+    const [gallery] = await db.execute(
+        `
+        SELECT 
+            ag_id AS imageId,
+            image_URL AS imageUrl
+        FROM
+            activity_gallery
+        WHERE
+            activity_id = ?
+            AND
+            image_on = 0
+        `,
+        [event[0].eventId]
+    );
+    if (gallery.length != 0) {
+        gallery.forEach((image) => {
+            image.imageUrl = imagesURL + "activitiesGallery/" + image.imageUrl;
+        });
+    }
+    const reviews = await getActivityReview(event[0].eventId);
+    event[0].image = imagesURL + "activities/" + event[0].image;
+    return res.status(200).json({ event: event[0], gallery, reviews });
+};
 const getTrails = async (req, res) => {
     const [trails] = await db.execute(
         `
@@ -307,13 +356,73 @@ const getTrails = async (req, res) => {
     return res.status(200).json(trails);
 };
 //TODO
-const getTrailDetails = async (req, res) => {};
+const getTrailDetails = async (req, res) => {
+    const { trailName } = req.params;
+    const [trail] = await db.execute(
+        `
+        SELECT
+            activity.a_id AS trailId,
+            activity.activity_title AS title,
+            activity.description AS description,
+            activity.preview_image_URL AS image,
+            activity_trail.starts_at AS startDate,
+            activity_trail.ends_at AS endDate,
+            guide.picture_URL AS guideImage,
+            user.f_name AS guideFirstName,
+            user.l_name AS guideLastName
+        FROM activity
+        INNER JOIN
+            activity_trail ON activity.a_id = activity_trail.activity_id
+        INNER JOIN
+            guide ON activity_trail.guide_id = guide.g_id
+        INNER JOIN
+            user ON guide.user_id = user.u_id
+        WHERE
+            type = 1
+            AND
+            activity_on = 0
+            AND
+            guide_on = 0
+            AND
+            activity_trail.ends_at > NOW()
+            AND
+            activity.activity_title = ?
+        `,
+        [trailName]
+    );
+    if (trail.length === 0) {
+        return res.status(200).json({ message: "Trail Not Found" });
+    }
+    const [gallery] = await db.execute(
+        `
+        SELECT 
+            ag_id AS imageId,
+            image_URL AS imageUrl
+        FROM
+            activity_gallery
+        WHERE
+            activity_id = ?
+            AND
+            image_on = 0
+        `,
+        [trail[0].trailId]
+    );
+    if (gallery.length != 0) {
+        gallery.forEach((image) => {
+            image.imageUrl = imagesURL + "activitiesGallery/" + image.imageUrl;
+        });
+    }
+    const reviews = await getActivityReview(trail[0].trailId);
+    trail[0].guideImage = imagesURL + "guides/" + trail[0].guideImage;
+    trail[0].image = imagesURL + "activities/" + trail[0].image;
+    return res.status(200).json({ trail: trail[0], gallery, reviews });
+};
 const getGuideReviews = async (guideId) => {
     //WHAT WE NEED: reviewScore, reviewText, reviewerName, reviewerId
     const [reviews] = await db.execute(
         `
         SELECT
-            review.user_id AS reviewerId
+            review.user_id AS reviewerId,
             review.rating AS reviewScore, 
             review.description AS reviewText, 
             CONCAT(user.f_name, '&', user.l_name) AS reviewerName
@@ -329,6 +438,30 @@ const getGuideReviews = async (guideId) => {
             review.review_on = 0
         `,
         [guideId]
+    );
+    return reviews;
+};
+const getActivityReview = async (activityId) => {
+    //WHAT WE NEED: reviewScore, reviewText, reviewerName, reviewerId
+    const [reviews] = await db.execute(
+        `
+        SELECT
+            review.user_id AS reviewerId,
+            review.rating AS reviewScore, 
+            review.description AS reviewText, 
+            CONCAT(user.f_name, '&', user.l_name) AS reviewerName
+        FROM 
+            review
+        INNER JOIN 
+            activity_review ON review.r_id = activity_review.review_id
+        INNER JOIN 
+            user ON review.user_id = user.u_id
+        WHERE 
+            activity_review.activity_id = ?
+            AND 
+            review.review_on = 0
+        `,
+        [activityId]
     );
     return reviews;
 };

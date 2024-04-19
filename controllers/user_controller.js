@@ -69,7 +69,7 @@ const register = async (req, res) => {
             `,
             [email, firstName, lastName, country, phone]
         );
-        const [user] = await db.execute(
+        await db.execute(
             `
             SELECT
                 u_id AS id
@@ -130,7 +130,6 @@ const login = async (req, res) => {
             return res.status(400).json({ error: "Invalid email or password" });
         }
         //JWT
-        console.log(process.env.JWT_SECRET);
         if (rememberMe === true) {
             const token = jwt.sign({ userId: user[0].id }, process.env.JWT_SECRET, {
                 expiresIn: "30d",

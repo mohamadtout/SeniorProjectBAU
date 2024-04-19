@@ -18,6 +18,8 @@ router.get(
     AppController.getGuideDetails
 );
 router.get("/trails", UserMiddleware.verifyAgent, AppController.getTrails);
+router.get("/trails/:trailName", UserMiddleware.verifyAgent, AppController.getTrailDetails);
 router.get("/events", UserMiddleware.verifyAgent, AppController.getEvents);
+router.get("/events/:eventName", UserMiddleware.verifyAgent, AppController.getEventDetails);
 
 module.exports = router;
