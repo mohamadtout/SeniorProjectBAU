@@ -41,7 +41,7 @@ const verifyAgent = async (req, res, next) => {
         }
         if (
             client.startsWith("Flutter") &&
-            (client != "Flutter Android v1.0" || client != "Flutter IOS v1.0")
+            !(client === "Flutter Android v1.0" || client === "Flutter IOS v1.0")
         ) {
             return res.status(401).json({ error: "Access denied" });
         } else {

@@ -46,12 +46,12 @@ const register = async (req, res) => {
                 error: "Password must contain at least one special character",
             });
         }
+        if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            return res.status(400).json({ error: "Invalid email" });
+        }
         const [rows] = await db.execute(`SELECT * FROM user WHERE email = ?`, [email]);
         if (rows.length > 0) {
             return res.status(400).json({ error: "Email already registered" });
-        }
-        if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-            return res.status(400).json({ error: "Invalid email" });
         }
         if (country.length !== 2) {
             return res.status(400).json({ error: "Country Code must be 2 characters" });
