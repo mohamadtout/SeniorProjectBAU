@@ -2,9 +2,11 @@
 METHODS IN THIS MIDDLEWARE:
 1.verifySession: used in the methods in the user_controller that require login, takes the token in the Authorization
     header and decodes it to get the userId of the currently logged in user and puts it in the body
-2.verifyAgent: used in version control/support (sepcifically on mobile development) so that older versions
+2.verifySessionOptional: used in the methods in the user_controller that can benefit from and utilize a login, takes the token in the Authorization
+    header and decodes it to get the userId of the currently logged in user and puts it in the body
+3.verifyAgent: used in version control/support (sepcifically on mobile development) so that older versions
     can be brought out of support from the server side
-3.logRequest: logs the current request performed by a logged in user in the database
+4.logRequest: logs the current request performed by a logged in user in the database
     this is to identify potential "bad-faith" behavior through a future admin dashboard
 */
 
@@ -31,6 +33,29 @@ const verifySession = async (req, res, next) => {
     } catch (error) {
         console.log(error);
         return res.status(401).json({ error: "Invalid token" });
+    }
+};
+const verifySessionOptional = async (req, res, next) => {
+    try {
+        const { userId } = req.body;
+        const token = req.header("Authorization");
+        if (!token || userId) {
+            next();
+        } else {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const [user] = await db.execute("SELECT u_id FROM user WHERE u_id = ?", [
+                decoded.userId,
+            ]);
+            if (user.length != 0) {
+                req.body.userId = decoded.userId;
+                next();
+            } else {
+                return res.status(401).json({ error: "Invalid token" });
+            }
+        }
+    } catch (error) {
+        console.log(error);
+        next();
     }
 };
 const verifyAgent = async (req, res, next) => {
@@ -68,6 +93,7 @@ const logRequest = async (req, res, next) => {
 };
 module.exports = {
     verifySession,
+    verifySessionOptional,
     verifyAgent,
     logRequest,
 };

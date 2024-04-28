@@ -10,16 +10,18 @@ router.get("/cities/:cityName", UserMiddleware.verifyAgent, AppController.getCit
 router.get(
     "/guides/:firstName/:lastName",
     UserMiddleware.verifyAgent,
+    UserMiddleware.verifySessionOptional,
     AppController.getGuideDetails
 );
 router.get(
     "/guides/:firstName/:lastName/:guideOrder",
     UserMiddleware.verifyAgent,
+    UserMiddleware.verifySessionOptional,
     AppController.getGuideDetails
 );
 router.get("/trails", UserMiddleware.verifyAgent, AppController.getTrails);
-router.get("/trails/:trailName", UserMiddleware.verifyAgent, AppController.getTrailDetails);
+router.get("/trails/:trailName", UserMiddleware.verifyAgent, UserMiddleware.verifySessionOptional, AppController.getTrailDetails);
 router.get("/events", UserMiddleware.verifyAgent, AppController.getEvents);
-router.get("/events/:eventName", UserMiddleware.verifyAgent, AppController.getEventDetails);
+router.get("/events/:eventName", UserMiddleware.verifyAgent, UserMiddleware.verifySessionOptional, AppController.getEventDetails);
 
 module.exports = router;

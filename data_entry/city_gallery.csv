@@ -1,0 +1,25 @@
+﻿cg_id 1,city_id,title,image_URL,image_on
+"0 is on, 1 is off "
+3,4,"A morning in old Saida","une-matinee-dans-le-vieux-saida.webp",0
+4,4,"A day in the old town of Saida","une-journee-dans-la-vieille-ville-saida.webp",0
+5,4,"Arc de Triomphe","arc-de-triomphe.webp",0
+6,4,"Aadloun Coast","aadloun-coast.webp",0
+7,4,"Abbasieh Coast Nature Reserve","abbassieh-coast.webp",0
+8,8,"A morning in old Saida","une-matinee-dans-le-vieux-saida.webp",0
+9,8,"A day in the old town of Saida","une-journee-dans-la-vieille-ville-saida.webp",0
+10,8,"Arc de Triomphe","arc-de-triomphe.webp",0
+11,8,"Aadloun Coast","aadloun-coast.webp",0
+12,8,"Abbasieh Coast Nature Reserve","abbassieh-coast.webp",0
+13,1,"Ashrafieh","ashrafieh.webp",0
+14,1,"Ras Beirut","ras-beirut.webp",0
+15,1,"Ain el Mraiseh","ain-el-mraiseh.webp",0
+16,1,"Mar Mikhael","mar-mikhael.webp",0
+17,1,"Al Majidiye Mosque","al-Majidiye-mosque.jpg",0
+18,2,"El Mina","el-mina.webp",0
+19,2,"Tripoli","tripoli2022-08-10-12-34-05.webp",0
+20,2,"Al Mansouri Mosque","al-mansouri-mosque.webp",0
+21,3,"Becharre","becharre.webp",0
+22,3,"Hadath El Jebbeh","hadath-el-jebbeh.webp",0
+23,3,"Hasroun","hasroun.webp",0
+24,3,"Cedars Cross","cedars-cross.webp",0
+25,3,"Gibran Khalil Gibran Museum","gibran-khalil-gibran-museum.webp",0
