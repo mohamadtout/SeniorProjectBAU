@@ -4,9 +4,9 @@ METHODS IN THIS MIDDLEWARE:
     header and decodes it to get the userId of the currently logged in user and puts it in the body
 2.verifySessionOptional: used in the methods in the user_controller that can benefit from and utilize a login, takes the token in the Authorization
     header and decodes it to get the userId of the currently logged in user and puts it in the body
-4.verifyAgent: used in version control/support (sepcifically on mobile development) so that older versions
+3.verifyAgent: used in version control/support (sepcifically on mobile development) so that older versions
     can be brought out of support from the server side
-5.logRequest: logs the current request performed by a logged in user in the database
+4.logRequest: logs the current request performed by a logged in user in the database
     this is to identify potential "bad-faith" behavior through a future admin dashboard
 */
 
