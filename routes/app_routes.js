@@ -42,5 +42,5 @@ router.get(
     UserMiddleware.verifySessionOptional,
     AppController.getEventDetails
 );
-
+router.get("/search/:query", UserMiddleware.verifyAgent, AppController.search);
 module.exports = router;

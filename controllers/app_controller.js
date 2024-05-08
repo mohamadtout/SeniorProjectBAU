@@ -14,6 +14,12 @@ METHODS IN THIS CONTROLLER:
 12.getActivityTips: helper function used in both getEventDetails and getTrailDetails to get all the tips of the event or trail
 13.getActivityCaracteristics: helper function used in both getEventDetails and getTrailDetails to get all the caracteristics of the event or trail
 14.getImage: temporary development based function to serve images, this can be easily switched to a CDN in a production environment
+15.getGuides: doesn't take anything from the request, returns a sneak peak of all the guides present in the database
+16.search: takes a query as a parameter, returns all the results that match the query
+17.searchGuides: helper function used in the search function to get all the guides that match the query
+18.searchEvents: helper function used in the search function to get all the events that match the query
+19.searchTrails: helper function used in the search function to get all the trails that match the query
+20.searchCities: helper function used in the search function to get all the cities that match the query
 */
 const db = require("../database");
 const path = require("path");
@@ -619,6 +625,147 @@ const getGuides = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
+const search = async (req, res) => {
+    try {
+        const { query } = req.params;
+        const guides = await searchGuides(query);
+        const events = await searchEvents(query);
+        const trails = await searchTrails(query);
+        const cities = await searchCities(query);
+        return res.status(200).json({ guides, events, trails, cities });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+const searchGuides = async (query) => {
+    try {
+        //contains, not exact match
+        const [guides] = await db.execute(
+            `
+            SELECT
+                g_id AS guideId,
+                CONCAT(user.f_name, '&', user.l_name) AS name,
+                picture_URL as photo,
+                city_name AS cityName
+            FROM
+                guide
+            INNER JOIN
+                city ON guide.city_id = city.c_id
+            INNER JOIN
+                user ON user.u_id =  guide.user_id 
+            WHERE
+                guide_on = 0
+                AND
+                CONCAT(user.f_name, ' ', user.l_name) LIKE ?
+            `,
+            [`%${query}%`]
+        );
+        for (const guide of guides) {
+            guide.photo = imagesURL + "guides/" + guide.photo;
+            guide.categories = await getGuideCategories(guide.guideId);
+        }
+        return guides;
+    } catch (error) {
+        throw error;
+    }
+};
+const searchEvents = async (query) => {
+    try {
+        const [events] = await db.execute(
+            `
+            SELECT
+                a_id AS eventId,
+                activity_title AS title,
+                preview_image_URL AS image,
+                activity_event.time AS time
+            FROM activity
+            INNER JOIN
+                activity_event ON activity.a_id = activity_event.activity_id
+            WHERE
+                type = 0
+                AND
+                activity_on = 0
+                AND
+                activity_event.time > NOW()
+                AND
+                activity_title LIKE ?
+            `,
+            [`%${query}%`]
+        );
+        events.forEach((event) => {
+            event.image = imagesURL + "activities/" + event.image;
+        });
+        return events;
+    } catch (error) {
+        throw error;
+    }
+};
+const searchTrails = async (query) => {
+    try {
+        const [trails] = await db.execute(
+            `
+            SELECT
+                activity.a_id AS trailId,
+                activity.activity_title AS title,
+                activity.preview_image_URL AS image,
+                activity_trail.starts_at AS startDate,
+                activity_trail.ends_at AS endDate,
+                guide.picture_URL AS guideImage,
+                user.f_name AS guideFirstName,
+                user.l_name AS guideLastName
+            FROM activity
+            INNER JOIN
+                activity_trail ON activity.a_id = activity_trail.activity_id
+            INNER JOIN
+                guide ON activity_trail.guide_id = guide.g_id
+            INNER JOIN
+                user ON guide.user_id = user.u_id
+            WHERE
+                type = 1
+                AND
+                activity_on = 0
+                AND
+                guide_on = 0
+                AND
+                activity_trail.ends_at > NOW()
+                AND
+                activity.activity_title LIKE ?
+            `,
+            [`%${query}%`]
+        );
+        trails.forEach((trail) => {
+            trail.guideImage = imagesURL + "guides/" + trail.guideImage;
+            trail.image = imagesURL + "activities/" + trail.image;
+        });
+        return trails;
+    } catch (error) {
+        throw error;
+    }
+};
+const searchCities = async (query) => {
+    try {
+        const [cities] = await db.execute(
+            `SELECT
+                c_id AS cityId,
+                city_name AS title,
+                city_description AS description,
+                image_URL AS imageUrl
+            FROM 
+                city
+            WHERE
+                city_name LIKE ?
+            `,
+            [`%${query}%`]
+        );
+        cities.forEach((city) => {
+            city.imageUrl = imagesURL + "cities/" + city.imageUrl;
+        });
+        return cities;
+    } catch (error) {
+        throw error;
+    }
+};
 module.exports = {
     getHeadlines,
     getImage,
@@ -630,4 +777,5 @@ module.exports = {
     getEventDetails,
     getTrailDetails,
     getGuides,
+    search,
 };

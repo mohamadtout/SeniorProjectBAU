@@ -6,6 +6,7 @@ require("dotenv").config();
 app.use(express.json());
 const user_routes = require("./routes/user_routes");
 const app_routes = require("./routes/app_routes");
+const guide_routes = require("./routes/guide_routes");
 const PORT = process.env.SERVER_PORT || 3000;
 const corsOptions = {
     origin: "*",
@@ -17,3 +18,4 @@ app.listen(PORT, () => {
 });
 app.use("/api", user_routes);
 app.use("/app", app_routes);
+app.use("/guide", guide_routes);
