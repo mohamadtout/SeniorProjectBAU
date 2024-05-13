@@ -1,9 +1,8 @@
 const cors = require("cors");
 const express = require("express");
 const app = express();
-// const db = require("./database");
 require("dotenv").config();
-app.use(express.json());
+app.use(express.json({ limit: "50mb"}));
 const user_routes = require("./routes/user_routes");
 const app_routes = require("./routes/app_routes");
 const guide_routes = require("./routes/guide_routes");

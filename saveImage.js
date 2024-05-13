@@ -3,11 +3,12 @@ const saveImage = (folderName, imageName, image) => {
     try {
         let matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
         if (matches.length !== 3) new Error("Invalid base64 image URI");
-        if(FileMimeType[matches[1]] === undefined) new Error("Invalid image type");
+        if (FileMimeType[matches[1]] === undefined)
+            new Error("Invalid image type");
         let data = Buffer.from(matches[2], "base64");
         fs.writeFileSync(
             __dirname +
-                `/images/${folderName}/${imageName}` +
+                `/images/${folderName}/${imageName}` + 
                 "." +
                 FileMimeType[matches[1]],
             data
@@ -24,6 +25,7 @@ const FileMimeType = {
     "image/bmp": "dib",
     "image/ief": "ief",
     "image/jpeg": "jpg",
+    "image/webp": "webp",
     "image/x-macpaint": "pnt",
     "application/vnd.oasis.opendocument.image": "odi",
     "image/x-portable-bitmap": "pbm",

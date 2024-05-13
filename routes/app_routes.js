@@ -10,6 +10,7 @@ router.get(
 );
 router.get("/images/:directory/:imageName", AppController.getImage);
 router.get("/cities", UserMiddleware.verifyAgent, AppController.getCities);
+router.get("/cities/featured", UserMiddleware.verifyAgent, AppController.getFeaturedCities);
 router.get(
     "/cities/:cityName",
     UserMiddleware.verifyAgent,

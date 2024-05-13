@@ -133,6 +133,20 @@ const editProfile = async (req, res) => {
         if (!bio && !pic && !coverPic) {
             return res.status(400).json({ message: "Missing Parameters" });
         }
+        const [guide] = await db.execute(
+            `
+            SELECT
+                CONCAT(user.f_name, '&', user.l_name) AS name,
+            FROM
+                guide
+            INNER JOIN
+                user ON guide.user_id = user.u_id
+            WHERE
+                g_id = ?
+            `,
+            [guideId]
+        );
+        const guideName = guide[0].name;
         if (bio) {
             await db.execute(
                 `
@@ -144,18 +158,20 @@ const editProfile = async (req, res) => {
             );
         }
         if (pic) {
-            let extension = saveImage("guides", `${guideId}-pic`, pic);
+            var time = Date.now();
+            var extension = saveImage("guides", `${guideName}-pic-${time}`, pic);
             await db.execute(
                 `
                 UPDATE guide
                 SET picture_URL = ?
                 WHERE g_id = ?
                 `,
-                [`${guideId}-pic.${extension}`, guideId]
+                [`${guideName}-pic-${time}.${extension}`, guideId]
             );
         }
         if (coverPic) {
-            let extension = saveImage(
+            var time = Date.now();
+            var extension = saveImage(
                 "guides",
                 `${guideId}-coverPic`,
                 coverPic
@@ -171,8 +187,15 @@ const editProfile = async (req, res) => {
         }
         return res.status(200).json({ message: "Updated Successfully" });
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ error: "Internal server error" });
+        if (
+            error.message === "Invalid base64 image URI" ||
+            error.message === "Invalid image type"
+        ) {
+            return res.status(400).json({ error: error.message });
+        } else {
+            console.log(error);
+            return res.status(500).json({ error: "Internal server error" });
+        }
     }
 };
 //Edit Trail Basic Info
@@ -191,6 +214,16 @@ const editTrail = async (req, res) => {
                 `,
                 [title, activityId]
             );
+        }else{
+            titleSearch = await db.execute(
+                `
+                SELECT activity_title
+                FROM activity
+                WHERE a_id = ?
+                `,
+                [activityId]
+            );
+            title = titleSearch[0].activity_title;
         }
         if (description) {
             await db.execute(
@@ -202,7 +235,7 @@ const editTrail = async (req, res) => {
                 [description, activityId]
             );
         }
-        if (price) {
+        if (price && parseFloat(price) >= 0) {
             await db.execute(
                 `
                 UPDATE activity
@@ -213,20 +246,32 @@ const editTrail = async (req, res) => {
             );
         }
         if (image) {
-            let extension = saveImage("activities", `${activityId}-preview.png`, image);
+            var time = Date.now();
+            var extension = saveImage(
+                "activities",
+                `${title}-${time}`,
+                image
+            );
             await db.execute(
                 `
                 UPDATE activity
                 SET preview_image_URL = ?
                 WHERE a_id = ?
                 `,
-                [`${activityId}-preview.${extension}`, activityId]
+                [`${title}-${time}.${extension}`, activityId]
             );
         }
         return res.status(200).json({ message: "Updated Successfully" });
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ error: "Internal server error" });
+        if (
+            error.message === "Invalid base64 image URI" ||
+            error.message === "Invalid image type"
+        ) {
+            return res.status(400).json({ error: error.message });
+        } else {
+            console.log(error);
+            return res.status(500).json({ error: "Internal server error" });
+        }
     }
 };
 module.exports = {

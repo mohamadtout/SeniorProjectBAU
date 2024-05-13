@@ -20,7 +20,9 @@ METHODS IN THIS CONTROLLER:
 18.searchEvents: helper function used in the search function to get all the events that match the query
 19.searchTrails: helper function used in the search function to get all the trails that match the query
 20.searchCities: helper function used in the search function to get all the cities that match the query
+21.getFeaturedCities: doesn't take anything from the request, returns a sneak peak of all the featured cities present in the database
 */
+const { get } = require("http");
 const db = require("../database");
 const path = require("path");
 const PORT = process.env.SERVER_PORT || 3000;
@@ -766,6 +768,28 @@ const searchCities = async (query) => {
         throw error;
     }
 };
+const getFeaturedCities = async (req, res) => {
+    try {
+        const [cities] = await db.execute(
+            `SELECT
+                c_id AS cityId,
+                city_name AS title,
+                city_description AS description,
+                image_URL AS imageUrl
+            FROM 
+                city
+            WHERE
+                featured = 1
+            `
+        );
+        cities.forEach((city) => {
+            city.imageUrl = imagesURL + "cities/" + city.imageUrl;
+        });
+        return res.status(200).json({ cities });
+    } catch (error) {
+        throw error;
+    }
+};
 module.exports = {
     getHeadlines,
     getImage,
@@ -778,4 +802,5 @@ module.exports = {
     getTrailDetails,
     getGuides,
     search,
+    getFeaturedCities,
 };
