@@ -69,7 +69,7 @@ const register = async (req, res) => {
             `,
             [email, firstName, lastName, country, phone]
         );
-        await db.execute(
+        const [user] = await db.execute(
             `
             SELECT
                 u_id AS id
