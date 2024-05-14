@@ -36,5 +36,11 @@ router.post(
     UserMiddleware.verifySession,
     UserController.editReview
 );
+router.post(
+    "/user/like",
+    UserMiddleware.verifyAgent,
+    UserMiddleware.verifySession,
+    UserController.toggleLike
+);
 
 module.exports = router;

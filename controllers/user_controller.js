@@ -379,7 +379,6 @@ const deleteReview = async (req, res) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
-
 const getQuestion = async (req, res) => {
     try {
         const { step } = req.body;
@@ -479,6 +478,49 @@ const answerQuestion = async (req, res) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+const toggleLike = async (req, res) => {
+    try {
+        const { userId, type, value, id } = req.body;
+        const typeInt = parseInt(type);
+        const valueInt = parseInt(value);
+        const idInt = parseInt(id);
+        console.log(typeInt, valueInt, idInt);
+        if (isNaN(typeInt) || isNaN(valueInt) || isNaN(idInt)) {
+            console.log("what");
+            return res.status(400).json({ message: "Bad Request" });
+        }
+        const [affected] = await db.execute(
+            `
+            UPDATE
+                user_like
+            SET
+                value = ?
+            WHERE
+                user_id = ?
+            AND
+                type = ?
+            AND
+                like_id = ?
+            `,
+            [value, userId, type, id]
+        );
+        if (affected.affectedRows == 0) {
+            await db.execute(
+                `
+                INSERT INTO
+                    user_like (ulk_id, user_id, type, like_id, value)
+                VALUES
+                    (NULL, ?, ?, ?, ?)
+                `,
+                [userId, type, id, value]
+            );
+        }
+        res.status(200).json({ message: "Updated Value Successfully" });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
 module.exports = {
     register,
     login,
@@ -486,7 +528,8 @@ module.exports = {
     reviewGuide,
     deleteReview,
     editReview,
-    //TO TEST
     answerQuestion,
     reviewActivity,
+    //TO TEST
+    toggleLike,
 };

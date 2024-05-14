@@ -22,7 +22,6 @@ METHODS IN THIS CONTROLLER:
 20.searchCities: helper function used in the search function to get all the cities that match the query
 21.getFeaturedCities: doesn't take anything from the request, returns a sneak peak of all the featured cities present in the database
 */
-const { get } = require("http");
 const db = require("../database");
 const path = require("path");
 const PORT = process.env.SERVER_PORT || 3000;
@@ -50,9 +49,29 @@ const getHeadlines = async (req, res) => {
     }
 };
 const getCities = async (req, res) => {
+    const { userId } = req.body;
+    let cities;
     try {
-        const [cities] = await db.execute(
-            `SELECT
+        if (userId) {
+            [cities] = await db.execute(
+                `SELECT
+                c_id AS cityId,
+                city_name AS title,
+                city_description AS description,
+                image_URL AS imageUrl,
+                CASE WHEN ul.value = 1 THEN TRUE ELSE FALSE END AS likedByUser
+            FROM 
+                city
+            LEFT JOIN 
+                user_like ul ON city.c_id = ul.like_id AND ul.user_id = ?
+            WHERE
+            ul.type = 0 OR ul.type IS NULL
+            `,
+                [userId]
+            );
+        } else {
+            [cities] = await db.execute(
+                `SELECT
                 c_id AS cityId,
                 city_name AS title,
                 city_description AS description,
@@ -60,7 +79,8 @@ const getCities = async (req, res) => {
             FROM 
                 city
             `
-        );
+            );
+        }
         cities.forEach((city) => {
             city.imageUrl = imagesURL + "cities/" + city.imageUrl;
         });
@@ -73,23 +93,48 @@ const getCities = async (req, res) => {
 const getCityDetails = async (req, res) => {
     try {
         const { cityName } = req.params;
-        const [city] = await db.execute(
-            `
-            SELECT
-                c_id AS cityId,
-                city_name AS title,
-                city_description AS description,
-                image_URL AS coverImage,
-                longitude,
-                latitude 
-            FROM 
-                city 
-            WHERE
-                city_name = ?
-            `,
-            [cityName]
-        );
-
+        const { userId } = req.body;
+        let city;
+        if (userId) {
+            [city] = await db.execute(
+                `
+                SELECT
+                    c_id AS cityId,
+                    city_name AS title,
+                    city_description AS description,
+                    image_URL AS coverImage,
+                    longitude,
+                    latitude,
+                    CASE WHEN ul.value = 1 THEN TRUE ELSE FALSE END AS likedByUser
+                FROM 
+                    city
+                LEFT JOIN 
+                    user_like ul ON city.c_id = ul.like_id AND ul.user_id = ?
+                WHERE
+                    city_name = ?
+                    AND
+                    (ul.type = 0 OR ul.type IS NULL)
+                `,
+                [userId, cityName]
+            );
+        } else {
+            [city] = await db.execute(
+                `
+                SELECT
+                    c_id AS cityId,
+                    city_name AS title,
+                    city_description AS description,
+                    image_URL AS coverImage,
+                    longitude,
+                    latitude
+                FROM 
+                    city
+                WHERE
+                    city_name = ?
+                `,
+                [cityName]
+            );
+        }
         if (city.length === 0) {
             return res.status(200).json({ message: "No City Found" });
         } else {
@@ -111,8 +156,7 @@ const getCityDetails = async (req, res) => {
             );
             if (gallery.length != 0) {
                 gallery.forEach((image) => {
-                    image.imageUrl =
-                        imagesURL + "cityGallery/" + image.imageUrl;
+                    image.imageUrl = imagesURL + "cityGallery/" + image.imageUrl;
                 });
             }
             const guides = await getGuidesForCity(city[0].cityId);
@@ -128,7 +172,8 @@ const getGuidesForCity = async (cityId) => {
         `
         SELECT
             g_id AS guideId,
-            CONCAT(user.f_name, '&', user.l_name) AS name,
+            user.f_name AS firstName,
+            user.l_name AS lastName,
             picture_URL as photo 
         FROM 
             guide
@@ -163,38 +208,67 @@ const getGuidesForCity = async (cityId) => {
                 `,
                 [guide.guideId]
             );
-            guide.categories = categories.map(
-                (category) => category.category_name
-            );
+            guide.categories = categories.map((category) => category.category_name);
         }
         return guides;
     }
 };
 const getGuideDetails = async (req, res) => {
     try {
-        const { firstName, lastName, userId } = req.params;
-        const [guideExists] = await db.execute(
-            `
-            SELECT 
-                g_id AS guideId,
-                bio,
-                picture_URL AS image,
-                cover_picture_URL AS coverImage,
-                city_name AS cityName 
-            FROM 
-                guide
-            INNER JOIN 
-                user ON user.u_id = guide.user_id
-            INNER JOIN
-                city ON guide.city_id = city.c_id
-            WHERE 
-                guide_on = 0
-                AND user_on = 0
-                AND f_name = ?
-                AND l_name = ?
-            `,
-            [firstName, lastName]
-        );
+        const { firstName, lastName } = req.params;
+        const { userId } = req.body;
+        let guideExists;
+        if (userId) {
+            [guideExists] = await db.execute(
+                `
+                SELECT 
+                    g_id AS guideId,
+                    bio,
+                    picture_URL AS image,
+                    cover_picture_URL AS coverImage,
+                    city_name AS cityName,
+                    CASE WHEN ul.value = 1 THEN TRUE ELSE FALSE END AS likedByUser
+                FROM 
+                    guide
+                INNER JOIN 
+                    user ON user.u_id = guide.user_id
+                INNER JOIN
+                    city ON guide.city_id = city.c_id
+                LEFT JOIN 
+                    user_like ul ON guide.g_id = ul.like_id AND ul.user_id = ?
+                WHERE 
+                    guide_on = 0
+                    AND user_on = 0
+                    AND f_name = ?
+                    AND l_name = ?
+                    AND (ul.type = 2 OR ul.type IS NULL)
+                `,
+                [userId, firstName, lastName]
+            );
+        } else {
+            [guideExists] = await db.execute(
+                `
+                SELECT 
+                    g_id AS guideId,
+                    bio,
+                    picture_URL AS image,
+                    cover_picture_URL AS coverImage,
+                    city_name AS cityName 
+                FROM 
+                    guide
+                INNER JOIN 
+                    user ON user.u_id = guide.user_id
+                INNER JOIN
+                    city ON guide.city_id = city.c_id
+                WHERE 
+                    guide_on = 0
+                    AND user_on = 0
+                    AND f_name = ?
+                    AND l_name = ?
+                `,
+                [firstName, lastName]
+            );
+        }
         let guide;
         if (guideExists.length == 0) {
             return res.status(200).json({ message: "Guide Not Found" });
@@ -266,54 +340,116 @@ const getGuideCategories = async (guideId) => {
     }
 };
 const getEvents = async (req, res) => {
-    const [events] = await db.execute(
-        `
-        SELECT
-            a_id AS eventId,
-            activity_title AS title,
-            preview_image_URL AS image,
-            activity_event.time AS time
-        FROM activity
-        INNER JOIN
-            activity_event ON activity.a_id = activity_event.activity_id
-        WHERE
-            type = 0
-            AND
-            activity_on = 0
-            AND
-            activity_event.time > NOW()
-        `
-    );
+    const { userId } = req.body;
+    let events;
+    if (userId) {
+        [events] = await db.execute(
+            `
+            SELECT
+                a_id AS eventId,
+                activity_title AS title,
+                preview_image_URL AS image,
+                activity_event.time AS time,
+                CASE WHEN ul.value = 1 THEN TRUE ELSE FALSE END AS likedByUser
+            FROM activity
+            INNER JOIN
+                activity_event ON activity.a_id = activity_event.activity_id
+            LEFT JOIN 
+                user_like ul ON activity.a_id = ul.like_id AND ul.user_id = ?
+            WHERE
+                activity.type = 0
+                AND
+                activity_on = 0
+                AND
+                activity_event.time > NOW()
+                AND
+                (ul.type = 1 OR ul.type IS NULL)
+            `,
+            [userId]
+        );
+    } else {
+        [events] = await db.execute(
+            `
+            SELECT
+                a_id AS eventId,
+                activity_title AS title,
+                preview_image_URL AS image,
+                activity_event.time AS time
+            FROM activity
+            INNER JOIN
+                activity_event ON activity.a_id = activity_event.activity_id
+            WHERE
+                type = 0
+                AND
+                activity_on = 0
+                AND
+                activity_event.time > NOW()
+            `
+        );
+    }
     events.forEach((event) => {
         event.image = imagesURL + "activities/" + event.image;
     });
     return res.status(200).json(events);
 };
 const getEventDetails = async (req, res) => {
-    const { eventName, userId } = req.params;
-    const [event] = await db.execute(
-        `
-        SELECT
-            a_id AS eventId,
-            activity_title AS title,
-            preview_image_URL AS image,
-            description,
-            price,
-            activity_event.time AS time
-        FROM activity
-        INNER JOIN
-            activity_event ON activity.a_id = activity_event.activity_id
-        WHERE
-            type = 0
-            AND
-            activity_on = 0
-            AND
-            activity_title = ?
-            AND
-            activity_event.time > NOW()
-        `,
-        [eventName]
-    );
+    const { eventName } = req.params;
+    const { userId } = req.body;
+    let event;
+    if (userId) {
+        [event] = await db.execute(
+            `
+            SELECT
+                a_id AS eventId,
+                activity_title AS title,
+                preview_image_URL AS image,
+                description,
+                price,
+                activity_event.time AS time,
+                CASE WHEN ul.value = 1 THEN TRUE ELSE FALSE END AS likedByUser
+            FROM activity
+            INNER JOIN
+                activity_event ON activity.a_id = activity_event.activity_id
+            LEFT JOIN 
+                user_like ul ON activity.a_id = ul.like_id AND ul.user_id = ?
+            WHERE
+                activity.type = 0
+                AND
+                activity_on = 0
+                AND
+                activity_title = ?
+                AND
+                activity_event.time > NOW()
+                AND
+                (ul.type = 1 OR ul.type IS NULL)
+            `,
+            [userId, eventName]
+        );
+    } else {
+        [event] = await db.execute(
+            `
+            SELECT
+                a_id AS eventId,
+                activity_title AS title,
+                preview_image_URL AS image,
+                description,
+                price,
+                activity_event.time AS time
+            FROM activity
+            INNER JOIN
+                activity_event ON activity.a_id = activity_event.activity_id
+            WHERE
+                type = 0
+                AND
+                activity_on = 0
+                AND
+                activity_title = ?
+                AND
+                activity_event.time > NOW()
+            `,
+            [eventName]
+        );
+    }
     if (event.length === 0) {
         return res.status(200).json({ message: "Event Not Found" });
     }
@@ -340,39 +476,76 @@ const getEventDetails = async (req, res) => {
     const tips = await getActivityTips(event[0].eventId);
     const caracteristics = await getActivityCaracteristics(event[0].eventId);
     event[0].image = imagesURL + "activities/" + event[0].image;
-    return res
-        .status(200)
-        .json({ event: event[0], gallery, reviews, tips, caracteristics });
+    return res.status(200).json({ event: event[0], gallery, reviews, tips, caracteristics });
 };
 const getTrails = async (req, res) => {
-    const [trails] = await db.execute(
-        `
-        SELECT
-            activity.a_id AS trailId,
-            activity.activity_title AS title,
-            activity.preview_image_URL AS image,
-            activity_trail.starts_at AS startDate,
-            activity_trail.ends_at AS endDate,
-            guide.picture_URL AS guideImage,
-            user.f_name AS guideFirstName,
-            user.l_name AS guideLastName
-        FROM activity
-        INNER JOIN
-            activity_trail ON activity.a_id = activity_trail.activity_id
-        INNER JOIN
-            guide ON activity_trail.guide_id = guide.g_id
-        INNER JOIN
-            user ON guide.user_id = user.u_id
-        WHERE
-            type = 1
-            AND
-            activity_on = 0
-            AND
-            guide_on = 0
-            AND
-            activity_trail.ends_at > NOW()
-        `
-    );
+    const { userId } = req.body;
+    let trails;
+    if (userId) {
+        [trails] = await db.execute(
+            `
+            SELECT
+                activity.a_id AS trailId,
+                activity.activity_title AS title,
+                activity.preview_image_URL AS image,
+                activity_trail.starts_at AS startDate,
+                activity_trail.ends_at AS endDate,
+                guide.picture_URL AS guideImage,
+                user.f_name AS guideFirstName,
+                user.l_name AS guideLastName,
+                CASE WHEN ul.value = 1 THEN TRUE ELSE FALSE END AS likedByUser
+            FROM activity
+            INNER JOIN
+                activity_trail ON activity.a_id = activity_trail.activity_id
+            INNER JOIN
+                guide ON activity_trail.guide_id = guide.g_id
+            INNER JOIN
+                user ON guide.user_id = user.u_id
+            LEFT JOIN 
+                user_like ul ON activity.a_id = ul.like_id AND ul.user_id = ?
+            WHERE
+                activity.type = 1
+                AND
+                activity_on = 0
+                AND
+                guide_on = 0
+                AND
+                activity_trail.ends_at > NOW()
+                AND
+                (ul.type = 1 OR ul.type IS NULL)
+            `,
+            [userId]
+        );
+    } else {
+        [trails] = await db.execute(
+            `
+            SELECT
+                activity.a_id AS trailId,
+                activity.activity_title AS title,
+                activity.preview_image_URL AS image,
+                activity_trail.starts_at AS startDate,
+                activity_trail.ends_at AS endDate,
+                guide.picture_URL AS guideImage,
+                user.f_name AS guideFirstName,
+                user.l_name AS guideLastName
+            FROM activity
+            INNER JOIN
+                activity_trail ON activity.a_id = activity_trail.activity_id
+            INNER JOIN
+                guide ON activity_trail.guide_id = guide.g_id
+            INNER JOIN
+                user ON guide.user_id = user.u_id
+            WHERE
+                type = 1
+                AND
+                activity_on = 0
+                AND
+                guide_on = 0
+                AND
+                activity_trail.ends_at > NOW()
+            `
+        );
+    }
     trails.forEach((trail) => {
         trail.guideImage = imagesURL + "guides/" + trail.guideImage;
         trail.image = imagesURL + "activities/" + trail.image;
@@ -380,45 +553,89 @@ const getTrails = async (req, res) => {
     return res.status(200).json(trails);
 };
 const getTrailDetails = async (req, res) => {
-    const { trailName, userId } = req.params;
-    const [trail] = await db.execute(
-        `
-        SELECT
-            activity.a_id AS trailId,
-            activity.activity_title AS title,
-            activity.description AS description,
-            activity.preview_image_URL AS image,
-            activity.price AS price,
-            activity_trail.starts_at AS startDate,
-            activity_trail.ends_at AS endDate,
-            guide.picture_URL AS guideImage,
-            user.f_name AS guideFirstName,
-            user.l_name AS guideLastName
-        FROM activity
-        INNER JOIN
-            activity_trail ON activity.a_id = activity_trail.activity_id
-        INNER JOIN
-            guide ON activity_trail.guide_id = guide.g_id
-        INNER JOIN
-            user ON guide.user_id = user.u_id
-        WHERE
-            type = 1
-            AND
-            activity_on = 0
-            AND
-            guide_on = 0
-            AND
-            activity_trail.ends_at > NOW()
-            AND
-            activity.activity_title = ?
-        `,
-        [trailName]
-    );
-    if (trail.length === 0) {
-        return res.status(200).json({ message: "Trail Not Found" });
-    }
-    const [gallery] = await db.execute(
-        `
+    try {
+        const { trailName } = req.params;
+        const { userId } = req.body;
+        let trail;
+        if (userId) {
+            [trail] = await db.execute(
+                `
+            SELECT
+                activity.a_id AS trailId,
+                activity.activity_title AS title,
+                activity.description AS description,
+                activity.preview_image_URL AS image,
+                activity.price AS price,
+                activity_trail.starts_at AS startDate,
+                activity_trail.ends_at AS endDate,
+                guide.picture_URL AS guideImage,
+                user.f_name AS guideFirstName,
+                user.l_name AS guideLastName,
+                CASE WHEN ul.value = 1 THEN TRUE ELSE FALSE END AS likedByUser
+            FROM activity
+            INNER JOIN
+                activity_trail ON activity.a_id = activity_trail.activity_id
+            INNER JOIN
+                guide ON activity_trail.guide_id = guide.g_id
+            INNER JOIN
+                user ON guide.user_id = user.u_id
+            LEFT JOIN 
+                user_like ul ON activity.a_id = ul.like_id AND ul.user_id = ?
+            WHERE
+                activity.type = 1
+                AND
+                activity_on = 0
+                AND
+                guide_on = 0
+                AND
+                activity_trail.ends_at > NOW()
+                AND
+                activity.activity_title = ?
+                AND
+                (ul.type = 1 OR ul.type IS NULL)
+            `,
+                [userId, trailName]
+            );
+        } else {
+            [trail] = await db.execute(
+                `
+            SELECT
+                activity.a_id AS trailId,
+                activity.activity_title AS title,
+                activity.description AS description,
+                activity.preview_image_URL AS image,
+                activity.price AS price,
+                activity_trail.starts_at AS startDate,
+                activity_trail.ends_at AS endDate,
+                guide.picture_URL AS guideImage,
+                user.f_name AS guideFirstName,
+                user.l_name AS guideLastName
+            FROM activity
+            INNER JOIN
+                activity_trail ON activity.a_id = activity_trail.activity_id
+            INNER JOIN
+                guide ON activity_trail.guide_id = guide.g_id
+            INNER JOIN
+                user ON guide.user_id = user.u_id
+            WHERE
+                type = 1
+                AND
+                activity_on = 0
+                AND
+                guide_on = 0
+                AND
+                activity_trail.ends_at > NOW()
+                AND
+                activity.activity_title = ?
+            `,
+                [trailName]
+            );
+        }
+        if (trail.length === 0) {
+            return res.status(200).json({ message: "Trail Not Found" });
+        }
+        const [gallery] = await db.execute(
+            `
         SELECT 
             ag_id AS imageId,
             image_URL AS imageUrl
@@ -429,21 +646,23 @@ const getTrailDetails = async (req, res) => {
             AND
             image_on = 0
         `,
-        [trail[0].trailId]
-    );
-    if (gallery.length != 0) {
-        gallery.forEach((image) => {
-            image.imageUrl = imagesURL + "activitiesGallery/" + image.imageUrl;
-        });
+            [trail[0].trailId]
+        );
+        if (gallery.length != 0) {
+            gallery.forEach((image) => {
+                image.imageUrl = imagesURL + "activitiesGallery/" + image.imageUrl;
+            });
+        }
+        const reviews = await getActivityReview(trail[0].trailId, userId);
+        const tips = await getActivityTips(trail[0].trailId);
+        const caracteristics = await getActivityCaracteristics(trail[0].trailId);
+        trail[0].guideImage = imagesURL + "guides/" + trail[0].guideImage;
+        trail[0].image = imagesURL + "activities/" + trail[0].image;
+        return res.status(200).json({ trail: trail[0], gallery, reviews, tips, caracteristics });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "Internal Server Error" });
     }
-    const reviews = await getActivityReview(trail[0].trailId, userId);
-    const tips = await getActivityTips(trail[0].trailId);
-    const caracteristics = await getActivityCaracteristics(trail[0].trailId);
-    trail[0].guideImage = imagesURL + "guides/" + trail[0].guideImage;
-    trail[0].image = imagesURL + "activities/" + trail[0].image;
-    return res
-        .status(200)
-        .json({ trail: trail[0], gallery, reviews, tips, caracteristics });
 };
 const getGuideReviews = async (guideId, userId) => {
     //WHAT WE NEED: reviewScore, reviewText, reviewerName
@@ -454,7 +673,8 @@ const getGuideReviews = async (guideId, userId) => {
             SELECT
                 review.rating AS reviewScore, 
                 review.description AS reviewText, 
-                CONCAT(user.f_name, '&', user.l_name) AS reviewerName
+                user.f_name AS reviewerFirstName,
+                user.l_name AS reviewerLastName
             FROM 
                 review
             INNER JOIN 
@@ -474,7 +694,8 @@ const getGuideReviews = async (guideId, userId) => {
             SELECT
                 review.rating AS reviewScore, 
                 review.description AS reviewText, 
-                CONCAT(user.f_name, '&', user.l_name) AS reviewerName,
+                user.f_name AS reviewerFirstName,
+                user.l_name AS reviewerLastName,
                 CASE WHEN review.user_id = ? THEN TRUE ELSE FALSE END AS isCurrentUserReview
             FROM 
                 review
@@ -544,7 +765,8 @@ const getActivityReview = async (activityId, userId) => {
             SELECT
                 review.rating AS reviewScore, 
                 review.description AS reviewText, 
-                CONCAT(user.f_name, '&', user.l_name) AS reviewerName
+                user.f_name AS reviewerFirstName,
+                user.l_name AS reviewerLastName
             FROM 
                 review
             INNER JOIN 
@@ -564,7 +786,8 @@ const getActivityReview = async (activityId, userId) => {
             SELECT
                 review.rating AS reviewScore, 
                 review.description AS reviewText, 
-                CONCAT(user.f_name, '&', user.l_name) AS reviewerName,
+                user.f_name AS reviewerFirstName,
+                user.l_name AS reviewerLastName,
                 CASE WHEN review.user_id = ? THEN TRUE ELSE FALSE END AS isCurrentUserReview
             FROM 
                 review
@@ -600,23 +823,53 @@ const getImage = async (req, res) => {
 };
 const getGuides = async (req, res) => {
     try {
-        const [guides] = await db.execute(
-            `
-            SELECT
-                g_id AS guideId,
-                CONCAT(user.f_name, '&', user.l_name) AS name,
-                picture_URL as photo,
-                city_name AS cityName
-            FROM 
-                guide
-            INNER JOIN
-                city ON guide.city_id = city.c_id
-            INNER JOIN
-                user ON user.u_id =  guide.user_id
-            WHERE 
-                guide_on = 0
-            `
-        );
+        const { userId } = req.body;
+        let guides;
+        if (userId) {
+            [guides] = await db.execute(
+                `
+                SELECT
+                    g_id AS guideId,
+                    user.f_name AS firstName,
+                    user.l_name AS lastName,
+                    picture_URL as photo,
+                    city_name AS cityName,
+                    CASE WHEN ul.value = 1 THEN TRUE ELSE FALSE END AS likedByUser
+                FROM 
+                    guide
+                INNER JOIN
+                    city ON guide.city_id = city.c_id
+                INNER JOIN
+                    user ON user.u_id =  guide.user_id
+                LEFT JOIN 
+                    user_like ul ON guide.g_id = ul.like_id AND ul.user_id = ?
+                WHERE 
+                    guide_on = 0
+                    AND (ul.type = 2 OR ul.type IS NULL)
+                `,
+                [userId]
+            );
+        } else {
+            [guides] = await db.execute(
+                `
+                SELECT
+                    g_id AS guideId,
+                    user.f_name AS firstName,
+                    user.l_name AS lastName,
+                    picture_URL as photo,
+                    city_name AS cityName
+                FROM 
+                    guide
+                INNER JOIN
+                    city ON guide.city_id = city.c_id
+                INNER JOIN
+                    user ON user.u_id =  guide.user_id
+                WHERE 
+                    guide_on = 0
+                `
+            );
+        }
+
         for (const guide of guides) {
             guide.photo = imagesURL + "guides/" + guide.photo;
             guide.categories = await getGuideCategories(guide.guideId);
@@ -647,7 +900,8 @@ const searchGuides = async (query) => {
             `
             SELECT
                 g_id AS guideId,
-                CONCAT(user.f_name, '&', user.l_name) AS name,
+                user.f_name AS firstName,
+                user.l_name AS lastName,
                 picture_URL as photo,
                 city_name AS cityName
             FROM

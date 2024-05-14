@@ -105,7 +105,8 @@ const getGuideProfile = async (req, res) => {
         const [guide] = await db.execute(
             `
             SELECT
-                CONCAT(user.f_name, '&', user.l_name) AS name,
+                user.f_name AS firstName,
+                user.l_name AS lastName,
                 bio,
                 picture_URL as pic,
                 cover_picture_URL as coverPic
@@ -136,7 +137,8 @@ const editProfile = async (req, res) => {
         const [guide] = await db.execute(
             `
             SELECT
-                CONCAT(user.f_name, '&', user.l_name) AS name,
+                user.f_name AS firstName,
+                user.l_name AS lastName
             FROM
                 guide
             INNER JOIN
@@ -171,11 +173,7 @@ const editProfile = async (req, res) => {
         }
         if (coverPic) {
             var time = Date.now();
-            var extension = saveImage(
-                "guides",
-                `${guideId}-coverPic`,
-                coverPic
-            );
+            var extension = saveImage("guides", `${guideId}-coverPic`, coverPic);
             await db.execute(
                 `
                 UPDATE guide
@@ -214,7 +212,7 @@ const editTrail = async (req, res) => {
                 `,
                 [title, activityId]
             );
-        }else{
+        } else {
             titleSearch = await db.execute(
                 `
                 SELECT activity_title
@@ -247,11 +245,7 @@ const editTrail = async (req, res) => {
         }
         if (image) {
             var time = Date.now();
-            var extension = saveImage(
-                "activities",
-                `${title}-${time}`,
-                image
-            );
+            var extension = saveImage("activities", `${title}-${time}`, image);
             await db.execute(
                 `
                 UPDATE activity

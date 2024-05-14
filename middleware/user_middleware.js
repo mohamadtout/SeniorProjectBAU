@@ -20,9 +20,10 @@ const verifySession = async (req, res, next) => {
             return res.status(401).json({ error: "Access denied" });
         } else {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            const [user] = await db.execute("SELECT u_id FROM user WHERE u_id = ? AND user_on = 0", [
-                decoded.userId,
-            ]);
+            const [user] = await db.execute(
+                "SELECT u_id FROM user WHERE u_id = ? AND user_on = 0",
+                [decoded.userId]
+            );
             if (user.length != 0) {
                 req.body.userId = decoded.userId;
                 next();
@@ -43,9 +44,10 @@ const verifySessionOptional = async (req, res, next) => {
             next();
         } else {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            const [user] = await db.execute("SELECT u_id FROM user WHERE u_id = ? AND user_on = 0", [
-                decoded.userId,
-            ]);
+            const [user] = await db.execute(
+                "SELECT u_id FROM user WHERE u_id = ? AND user_on = 0",
+                [decoded.userId]
+            );
             if (user.length != 0) {
                 req.body.userId = decoded.userId;
                 next();
@@ -68,7 +70,7 @@ const verifyAgent = async (req, res, next) => {
             client.startsWith("Flutter") &&
             !(client === "Flutter Android v1.0" || client === "Flutter IOS v1.0")
         ) {
-            return res.status(401).json({ error: "Access denied" });
+            return res.status(406).json({ error: "Version Out Of Support" });
         } else {
             next();
         }

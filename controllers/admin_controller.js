@@ -3,7 +3,6 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const PORT = process.env.SERVER_PORT || 3000;
 const imagesURL = process.env.API_URL + ":" + PORT + "/app/images/";
-
 const login = async (req, res) => {
     const { email, password } = req.body;
     try {
