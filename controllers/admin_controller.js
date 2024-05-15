@@ -70,11 +70,13 @@ const getUsers = async (req, res) => {
                 f_name AS firstName,
                 l_name AS lastName,
                 email,
-                user_on AS userOn,
+                user_on AS userOn
             FROM
                 user
             LEFT JOIN
                 guide ON guide.user_id = user.u_id
+            WHERE
+                guide.g_id IS NULL
             `
         );
         const [guides] = await db.execute(
@@ -100,8 +102,11 @@ const getUsers = async (req, res) => {
     }
 };
 const updateUser = async (req, res) => {
-    const { userId, userOn } = req.body;
     try {
+        const { userIdToEdit, userOn } = req.body;
+        if (!Number.isInteger(userIdToEdit) || !Number.isInteger(userOn)) {
+            return res.status(400).json({ message: "Missing Parameters" });
+        }
         await db.execute(
             `
             UPDATE
@@ -111,17 +116,20 @@ const updateUser = async (req, res) => {
             WHERE
                 u_id = ?
             `,
-            [userOn, userId]
+            [userOn, userIdToEdit]
         );
         return res.status(200).json({ message: "User updated" });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ error: "Server error" });
+        return res.status(500).json({ error: "Internal Server error" });
     }
 };
 const updateGuide = async (req, res) => {
-    const { guideId, guideOn } = req.body;
     try {
+        const { guideIdToEdit, guideOn } = req.body;
+        if (!Number.isInteger(guideIdToEdit) || !Number.isInteger(guideOn)) {
+            return res.status(400).json({ message: "Missing Parameters" });
+        }
         await db.execute(
             `
             UPDATE
@@ -131,19 +139,64 @@ const updateGuide = async (req, res) => {
             WHERE
                 g_id = ?
             `,
-            [guideOn, guideId]
+            [guideOn, guideIdToEdit]
         );
         return res.status(200).json({ message: "Guide updated" });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Internal Server error" });
+    }
+};
+
+const getCities = async (req, res) => {
+    try {
+        const [cities] = await db.execute(
+            `
+            SELECT
+                c_id AS cityId,
+                city_name AS cityName,
+                featured
+            FROM
+            city
+            `
+        );
+        return res.status(200).json({ cities });
     } catch (error) {
         console.log(error);
         return res.status(500).json({ error: "Server error" });
     }
 };
 
+const featureCity = async (req, res) => {
+    try {
+        const { cityId, cityOn } = req.body;
+
+        if (!Number.isInteger(cityId) || !Number.isInteger(cityOn)) {
+            return res.status(400).json({ message: "Missing Parameters" });
+        }
+        await db.execute(
+            `
+            UPDATE
+                city
+            SET
+                featured = ?
+            WHERE
+                c_id = ?
+            `,
+            [cityOn, cityId]
+        );
+        return res.status(200).json({ message: "City updated" });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Server error" });
+    }
+};
 module.exports = {
     //TO TEST
     login,
     getUsers,
     updateUser,
     updateGuide,
+    getCities,
+    featureCity,
 };
