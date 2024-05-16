@@ -3,7 +3,11 @@ const router = express.Router();
 const UserController = require("../controllers/user_controller");
 const UserMiddleware = require("../middleware/user_middleware");
 
-router.post("/users/register", UserMiddleware.verifyAgent, UserController.register);
+router.post(
+    "/users/register",
+    UserMiddleware.verifyAgent,
+    UserController.register
+);
 
 router.post("/users/login", UserMiddleware.verifyAgent, UserController.login);
 router.get(
@@ -41,6 +45,13 @@ router.post(
     UserMiddleware.verifyAgent,
     UserMiddleware.verifySession,
     UserController.toggleLike
+);
+
+router.post(
+    "/book",
+    UserMiddleware.verifyAgent,
+    UserMiddleware.verifySession,
+    UserController.bookActivity
 );
 
 module.exports = router;

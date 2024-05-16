@@ -19,18 +19,30 @@ const db = require("../database");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { isValidPhoneNumber } = require("libphonenumber-js");
-
+const PORT = process.env.SERVER_PORT || 3000;
+const imagesURL = process.env.API_URL + ":" + PORT + "/app/images/";
 const register = async (req, res) => {
     const { email, password, firstName, lastName, country, phone } = req.body;
     try {
         //VALIDATION
-        if (!email || !password || !firstName || !lastName || !country || !phone) {
+        if (
+            !email ||
+            !password ||
+            !firstName ||
+            !lastName ||
+            !country ||
+            !phone
+        ) {
             return res.status(400).json({ error: "Missing required fields" });
         }
         if (password.length < 8) {
-            return res.status(400).json({ error: "Password must be at least 8 characters" });
+            return res
+                .status(400)
+                .json({ error: "Password must be at least 8 characters" });
         } else if (password.length > 60) {
-            return res.status(400).json({ error: "Password must be less than 60 characters" });
+            return res
+                .status(400)
+                .json({ error: "Password must be less than 60 characters" });
         } else if (!password.match(/[a-z]/g)) {
             return res.status(400).json({
                 error: "Password must contain at least one lowercase letter",
@@ -40,7 +52,9 @@ const register = async (req, res) => {
                 error: "Password must contain at least one uppercase letter",
             });
         } else if (!password.match(/[0-9]/g)) {
-            return res.status(400).json({ error: "Password must contain at least one number" });
+            return res
+                .status(400)
+                .json({ error: "Password must contain at least one number" });
         } else if (!password.match(/[^a-zA-Z\d]/g)) {
             return res.status(400).json({
                 error: "Password must contain at least one special character",
@@ -49,12 +63,16 @@ const register = async (req, res) => {
         if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
             return res.status(400).json({ error: "Invalid email" });
         }
-        const [rows] = await db.execute(`SELECT * FROM user WHERE email = ?`, [email]);
+        const [rows] = await db.execute(`SELECT * FROM user WHERE email = ?`, [
+            email,
+        ]);
         if (rows.length > 0) {
             return res.status(400).json({ error: "Email already registered" });
         }
         if (country.length !== 2) {
-            return res.status(400).json({ error: "Country Code must be 2 characters" });
+            return res
+                .status(400)
+                .json({ error: "Country Code must be 2 characters" });
         }
         if (isValidPhoneNumber(phone, country) !== true) {
             return res.status(400).json({ error: "Invalid phone number." });
@@ -131,9 +149,13 @@ const login = async (req, res) => {
         }
         //JWT
         if (rememberMe === true) {
-            const token = jwt.sign({ userId: user[0].id }, process.env.JWT_SECRET, {
-                expiresIn: "30d",
-            });
+            const token = jwt.sign(
+                { userId: user[0].id },
+                process.env.JWT_SECRET,
+                {
+                    expiresIn: "30d",
+                }
+            );
             await db.execute(
                 `
                 INSERT INTO
@@ -143,9 +165,13 @@ const login = async (req, res) => {
             );
             return res.status(200).json({ token });
         } else {
-            const token = jwt.sign({ userId: user[0].id }, process.env.JWT_SECRET, {
-                expiresIn: "1h",
-            });
+            const token = jwt.sign(
+                { userId: user[0].id },
+                process.env.JWT_SECRET,
+                {
+                    expiresIn: "1h",
+                }
+            );
             await db.execute(
                 `
                 INSERT INTO
@@ -180,7 +206,29 @@ const getUserDetails = async (req, res) => {
                 u_id = ?`,
             [userId]
         );
-        return res.status(200).json({ user: data[0] });
+        const [bookedActivities] = await db.execute(
+            `
+            SELECT
+                DISTINCT(activity.a_id) AS activityId,
+                activity.activity_title AS title,
+                activity.preview_image_URL AS image,
+                activity.price,
+                user_activity.time AS time,
+                COUNT(activity.a_id) AS bookedTimes
+            FROM
+                user_activity
+            INNER JOIN activity ON user_activity.activity_id = activity.a_id
+            WHERE
+                user_activity.user_id = ?
+                AND
+                activity.activity_on = 0
+            `,
+            [userId]
+        );
+        bookedActivities.forEach((activity) => {
+            activity.image = imagesURL + "activities/" + activity.image;
+        });
+        return res.status(200).json({ user: data[0], bookedActivities });
     } catch (error) {
         console.log(error);
         return res.status(500).json({ error: "Internal server error" });
@@ -210,7 +258,9 @@ const reviewGuide = async (req, res) => {
             );
             if (guideExists[0].count !== 1) {
                 //OBFUSCATION OF CAUSE OF BAD REQUEST
-                return res.status(400).json({ message: "Missing required fields" });
+                return res
+                    .status(400)
+                    .json({ message: "Missing required fields" });
             } else {
                 const review = await db.execute(
                     `
@@ -228,7 +278,9 @@ const reviewGuide = async (req, res) => {
                     `,
                     [guideId, review[0].insertId]
                 );
-                return res.status(200).json({ message: "Review Added Successfully" });
+                return res
+                    .status(200)
+                    .json({ message: "Review Added Successfully" });
             }
         }
     } catch (error) {
@@ -258,7 +310,9 @@ const reviewActivity = async (req, res) => {
             );
             if (acitivityExists[0].count !== 1) {
                 //OBFUSCATION OF CAUSE OF BAD REQUEST
-                return res.status(400).json({ message: "Missing required fields" });
+                return res
+                    .status(400)
+                    .json({ message: "Missing required fields" });
             } else {
                 const review = await db.execute(
                     `
@@ -276,7 +330,9 @@ const reviewActivity = async (req, res) => {
                     `,
                     [activityId, review[0].insertId]
                 );
-                return res.status(200).json({ message: "Review Added Successfully" });
+                return res
+                    .status(200)
+                    .json({ message: "Review Added Successfully" });
             }
         }
     } catch (error) {
@@ -288,7 +344,14 @@ const editReview = async (req, res) => {
     try {
         const { userId, reviewId, newScore, newText } = req.body;
         const score = parseInt(newScore);
-        if (!userId || !reviewId || !newScore || !score || score < 0 || score > 100) {
+        if (
+            !userId ||
+            !reviewId ||
+            !newScore ||
+            !score ||
+            score < 0 ||
+            score > 100
+        ) {
             return res.status(400).json({ message: "Missing required fields" });
         } else {
             const [reviewValid] = await db.execute(
@@ -308,7 +371,9 @@ const editReview = async (req, res) => {
             );
             if (reviewValid[0].count !== 1) {
                 //OBFUSCATION OF CAUSE OF BAD REQUEST
-                return res.status(400).json({ message: "Missing required fields" });
+                return res
+                    .status(400)
+                    .json({ message: "Missing required fields" });
             } else {
                 await db.execute(
                     `
@@ -327,7 +392,9 @@ const editReview = async (req, res) => {
                 `,
                     [score, newText, reviewId, userId]
                 );
-                return res.status(200).json({ message: "Edited Review Successfully" });
+                return res
+                    .status(200)
+                    .json({ message: "Edited Review Successfully" });
             }
         }
     } catch (error) {
@@ -356,7 +423,9 @@ const deleteReview = async (req, res) => {
             );
             if (reviewValid[0].count !== 1) {
                 //OBFUSCATION OF CAUSE OF BAD REQUEST
-                return res.status(400).json({ message: "Missing required fields" });
+                return res
+                    .status(400)
+                    .json({ message: "Missing required fields" });
             } else {
                 await db.execute(
                     `
@@ -371,7 +440,9 @@ const deleteReview = async (req, res) => {
                 `,
                     [reviewId, userId]
                 );
-                return res.status(200).json({ message: "Deleted Review Successfully" });
+                return res
+                    .status(200)
+                    .json({ message: "Deleted Review Successfully" });
             }
         }
     } catch (error) {
@@ -399,7 +470,9 @@ const getQuestion = async (req, res) => {
             [step]
         );
         if (questions.length === 0) {
-            return res.status(400).json({ message: "No Questions Found For This Step" });
+            return res
+                .status(400)
+                .json({ message: "No Questions Found For This Step" });
         } else {
             questions.forEach(async (question) => {
                 const [answers] = await db.execute(
@@ -447,7 +520,9 @@ const answerQuestion = async (req, res) => {
                 [questionId, answerId]
             );
             if (answerValid.count != 1) {
-                return res.status(400).json({ message: "Invalid Question or Answer Id" });
+                return res
+                    .status(400)
+                    .json({ message: "Invalid Question or Answer Id" });
             } else {
                 //delete any previous answer to the same question submitted by the user
                 await db.execute(
@@ -470,7 +545,9 @@ const answerQuestion = async (req, res) => {
                 `,
                     [userId, questionId, answerId]
                 );
-                return res.status(200).json({ message: "Answer Recorded Successfully!" });
+                return res
+                    .status(200)
+                    .json({ message: "Answer Recorded Successfully!" });
             }
         }
     } catch (error) {
@@ -521,6 +598,105 @@ const toggleLike = async (req, res) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+const bookActivity = async (req, res) => {
+    try {
+        const { userId, activityId, time } = req.body;
+        let { count } = req.body;
+        if (
+            !userId ||
+            !activityId ||
+            !time ||
+            (count && !Number.isInteger(count))
+        ) {
+            return res.status(400).json({ message: "Missing required fields" });
+        }
+        const timeDate = new Date(time)
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " ");
+        if (timeDate == "Invalid Date") {
+            return res.status(400).json({ message: "Invalid Date" });
+        }
+        const [activityExists] = await db.execute(
+            `
+            SELECT
+                COUNT(*) AS count
+            FROM
+                activity
+            WHERE
+                a_id = ?
+            `,
+            [activityId]
+        );
+        if (activityExists[0].count !== 1) {
+            return res.status(400).json({ message: "Invalid Activity" });
+        }
+        const [activityRange] = await db.execute(
+            `
+            SELECT
+                activity_trail.starts_at AS startsAt,
+                activity_trail.ends_at AS endsAt
+            FROM
+                activity
+            INNER JOIN
+                activity_trail
+            ON
+                activity.a_id = activity_trail.activity_id
+            WHERE
+                activity.a_id = ?
+            `,
+            [activityId]
+        );
+        if (activityRange.length === 0) {
+            const [activityTime] = await db.execute(
+                `
+                SELECT
+                    activity_event.time AS time
+                FROM
+                    activity
+                INNER JOIN
+                    activity_event
+                ON
+                    activity.a_id = activity_event.activity_id
+                WHERE
+                    activity.a_id = ?
+                `,
+                [activityId]
+            );
+            if (timeDate !== activityTime[0].time) {
+                return res.status(400).json({ message: "Date Out Of Range" });
+            }
+        } else {
+            if (timeDate < activityRange[0].startsAt) {
+                return res.status(400).json({ message: "Date Out Of Range" });
+            }
+            if (timeDate > activityRange[0].endsAt) {
+                return res.status(400).json({ message: "Date Out Of Range" });
+            }
+        }
+        //IF YOU'RE READING THIS, THIS IS WHAT DEADLINES DOES TO ME, PLEASE EXCUSE ME I'M BEING HELD HOSTAGE TO PUT OUT MORE USELESS CODE
+        if (!count) {
+            count = 1;
+        }
+        for (let i = 0; i < count; i++) {
+            await db.execute(
+                `
+                INSERT INTO
+                    user_activity (ua_id, user_id, activity_id, time)
+                VALUES
+                    (NULL, ?, ?, ?)
+                `,
+                [userId, activityId, timeDate]
+            );
+        }
+        return res
+            .status(200)
+            .json({ message: "Activity Booked Successfully" });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
 module.exports = {
     register,
     login,
@@ -528,8 +704,8 @@ module.exports = {
     reviewGuide,
     deleteReview,
     editReview,
-    answerQuestion,
     reviewActivity,
-    //TO TEST
     toggleLike,
+    //TO TEST
+    bookActivity,
 };

@@ -674,7 +674,8 @@ const getGuideReviews = async (guideId, userId) => {
                 review.rating AS reviewScore, 
                 review.description AS reviewText, 
                 user.f_name AS reviewerFirstName,
-                user.l_name AS reviewerLastName
+                user.l_name AS reviewerLastName,
+                review.created_at AS reviewDate
             FROM 
                 review
             INNER JOIN 
@@ -696,6 +697,7 @@ const getGuideReviews = async (guideId, userId) => {
                 review.description AS reviewText, 
                 user.f_name AS reviewerFirstName,
                 user.l_name AS reviewerLastName,
+                review.created_at AS reviewDate,
                 CASE WHEN review.user_id = ? THEN TRUE ELSE FALSE END AS isCurrentUserReview
             FROM 
                 review
@@ -766,7 +768,8 @@ const getActivityReview = async (activityId, userId) => {
                 review.rating AS reviewScore, 
                 review.description AS reviewText, 
                 user.f_name AS reviewerFirstName,
-                user.l_name AS reviewerLastName
+                user.l_name AS reviewerLastName,
+                review.created_at AS reviewDate
             FROM 
                 review
             INNER JOIN 
@@ -788,6 +791,7 @@ const getActivityReview = async (activityId, userId) => {
                 review.description AS reviewText, 
                 user.f_name AS reviewerFirstName,
                 user.l_name AS reviewerLastName,
+                review.created_at AS reviewDate,
                 CASE WHEN review.user_id = ? THEN TRUE ELSE FALSE END AS isCurrentUserReview
             FROM 
                 review
