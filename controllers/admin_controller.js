@@ -191,6 +191,48 @@ const featureCity = async (req, res) => {
         return res.status(500).json({ error: "Server error" });
     }
 };
+const getCaracteristics = async (req, res) => {
+    try {
+        const [caracteristics] = await db.execute(
+            `
+            SELECT
+                ca_id AS caracteristicId,
+                name,
+                icon,
+                active
+            FROM
+            caracteristic
+            `
+        );
+        return res.status(200).json({ caracteristics });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Server error" });
+    }
+};
+const updateCaracteristic = async (req, res) => {
+    try {
+        const { caracteristicId, active } = req.body;
+        if (!Number.isInteger(caracteristicId) || !Number.isInteger(active)) {
+            return res.status(400).json({ message: "Missing Parameters" });
+        }
+        await db.execute(
+            `
+            UPDATE
+                caracteristic
+            SET
+                active = ?
+            WHERE
+                ca_id = ?
+            `,
+            [active, caracteristicId]
+        );
+        return res.status(200).json({ message: "Caracteristic updated" });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: "Server error" });
+    }
+};
 module.exports = {
     //TO TEST
     login,
@@ -199,4 +241,6 @@ module.exports = {
     updateGuide,
     getCities,
     featureCity,
+    getCaracteristics,
+    updateCaracteristic,
 };

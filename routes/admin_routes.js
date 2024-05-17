@@ -9,4 +9,6 @@ router.post("/users/toggle-user", AdminMiddleware.verifySessionAdmin, AdminContr
 router.post("/users/toggle-guide", AdminMiddleware.verifySessionAdmin, AdminController.updateGuide);
 router.get("/cities", AdminMiddleware.verifySessionAdmin, AdminController.getCities);
 router.post("/cities/feature", AdminMiddleware.verifySessionAdmin, AdminController.featureCity);
+router.get("/caracteristics", AdminMiddleware.verifySessionAdmin, AdminController.getCaracteristics);
+router.post("/caracteristics/toggle", AdminMiddleware.verifySessionAdmin, AdminController.updateCaracteristic);
 module.exports = router;
