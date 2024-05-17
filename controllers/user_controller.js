@@ -209,7 +209,7 @@ const getUserDetails = async (req, res) => {
         const [bookedActivities] = await db.execute(
             `
             SELECT
-                DISTINCT(activity.a_id) AS activityId,
+                DISTINCT activity.a_id AS activityId,
                 activity.activity_title AS title,
                 activity.preview_image_URL AS image,
                 activity.price,
@@ -220,8 +220,13 @@ const getUserDetails = async (req, res) => {
             INNER JOIN activity ON user_activity.activity_id = activity.a_id
             WHERE
                 user_activity.user_id = ?
-                AND
-                activity.activity_on = 0
+                AND activity.activity_on = 0
+            GROUP BY
+                activity.a_id,
+                activity.activity_title,
+                activity.preview_image_URL,
+                activity.price,
+                user_activity.time
             `,
             [userId]
         );
